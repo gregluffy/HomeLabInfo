@@ -1,0 +1,34 @@
+# Node
+node_modules/
+.pnp
+.pnp.js
+.npm
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# .NET / C#
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# Database 
+*.db
+*.db-shm
+*.db-wal
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
