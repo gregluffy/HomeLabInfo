@@ -44,13 +44,32 @@ export default function NetworkSummaryCard() {
     }
   };
 
+  const onlineCount = devices.filter(d => d.status === "Online").length;
+  const offlineCount = devices.filter(d => d.status === "Offline").length;
+
   return (
     <div className="bg-white/5 backdrop-blur-lg border border-white/10 p-6 rounded-3xl flex flex-col h-[500px]">
       <div className="flex justify-between items-center mb-6">
-        <Link href="/network" className="group flex items-center gap-2">
-            <h2 className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">Network</h2>
-            <svg className="w-5 h-5 text-neutral-500 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/network" className="group flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">Network</h2>
+              <svg className="w-5 h-5 text-neutral-500 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
+          </Link>
+          
+          {(onlineCount > 0 || offlineCount > 0) && (
+            <div className="flex gap-2 text-xs font-semibold">
+                <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(52,211,153,0.1)]">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    {onlineCount} Online
+                </span>
+                {offlineCount > 0 && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                      {offlineCount} Offline
+                  </span>
+                )}
+            </div>
+          )}
+        </div>
         
         <div className="flex gap-2 p-1 bg-black/40 rounded-xl items-center border border-white/5">
             <input 
