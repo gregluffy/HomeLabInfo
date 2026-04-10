@@ -71,7 +71,7 @@ export default function NetworkTopologyGraph() {
     async function fetchData() {
       try {
         const [devicesRes, agentsRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/devices`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices`),
           fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`)
         ]);
         
