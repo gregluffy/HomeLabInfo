@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  homelab-agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    # image: user/homelab-agent:latest # Use this when deploying from a registry
+    container_name: homelab-agent
+    restart: unless-stopped
+    ports:
+      - "8080:8080" # Exposed agent port to Hub
+    volumes:
+      # Mount docker socket to read container stats
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount host root to read accurate host OS metrics (Disk)
+      - /:/host:ro
+      # Allow access to host proc for CPU/RAM
+      - /proc:/host/proc:ro
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # SECURITY: Provide the public key from the Hub dashboard configuration
+      - HUB_PUBLIC_KEY=CHANGE_ME
+    # pid: host (optional: uncomment if /host/proc fails)

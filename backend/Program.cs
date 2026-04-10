@@ -14,7 +14,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite("Data Source=homelab.db"));
 
 builder.Services.AddScoped<NetworkScannerService>();
-
+builder.Services.AddSingleton<CryptographyService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",

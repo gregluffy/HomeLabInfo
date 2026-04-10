@@ -33,3 +33,6 @@ Thumbs.db
 .docker/
 docker-compose.override.yml
 Instructions
+
+# Ignore local config with secrets
+agent/appsettings.json

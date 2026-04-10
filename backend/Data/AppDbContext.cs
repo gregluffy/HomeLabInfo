@@ -10,4 +10,5 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<NetworkDevice> Devices { get; set; }
+    public DbSet<VmAgent> VmAgents { get; set; }
 }
