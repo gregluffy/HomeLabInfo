@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Server, Activity, HardDrive, Cpu, Box, Plus, Trash2, Edit2 } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Server, Activity, HardDrive, Cpu, Box, Plus, Trash2, Edit2, X } from "lucide-react";
 import AddAgentModal from "./AddAgentModal";
 
 export default function AppsSummaryCard() {
@@ -97,6 +98,7 @@ export default function AppsSummaryCard() {
 function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent: any; onEdit: () => void; onDelete: () => void; refreshIntervalMs: number | null }) {
   const [stats, setStats] = useState<any>(null);
   const [error, setError] = useState<boolean>(false);
+  const [showContainers, setShowContainers] = useState(false);
 
   useEffect(() => {
     const fetchStats = () => {
@@ -162,8 +164,15 @@ function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent:
               <span className="font-mono text-sm font-semibold text-white/90">{stats.host.diskUsedGB.toFixed(1)}G</span>
             </div>
           </div>
-          <div>
-            <span className="text-xs text-indigo-300 font-bold uppercase mb-2 flex items-center gap-1 tracking-wider"><Box className="w-3 h-3" /> Containers ({stats.containers?.length || 0})</span>
+          <div 
+            onClick={() => setShowContainers(true)}
+            className="mt-4 p-2 -mx-2 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group/clist"
+            title="Click to view all containers"
+          >
+            <span className="text-xs text-indigo-300 font-bold uppercase mb-2 flex items-center justify-between tracking-wider">
+               <span className="flex items-center gap-1"><Box className="w-3 h-3" /> Containers ({stats.containers?.length || 0})</span>
+               <span className="opacity-0 group-hover/clist:opacity-100 transition-opacity text-[10px] text-indigo-400">View All &rarr;</span>
+            </span>
             <div className="flex flex-wrap gap-1.5 text-white/80">
               {stats.containers?.slice(0, 7).map((c: any) => (
                 <span key={c.id} title={c.name} className="text-xs px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md truncate max-w-[120px]">
@@ -175,6 +184,12 @@ function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent:
               )}
             </div>
           </div>
+          <ContainersModal 
+            isOpen={showContainers} 
+            onClose={() => setShowContainers(false)} 
+            agentName={agent.name} 
+            containers={stats.containers || []} 
+          />
         </div>
       ) : (
         <div className="animate-pulse flex flex-col gap-3 flex-1 mt-2 relative z-10">
@@ -183,5 +198,47 @@ function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent:
         </div>
       )}
     </div>
+  );
+}
+
+function ContainersModal({ isOpen, onClose, agentName, containers }: { isOpen: boolean, onClose: () => void, agentName: string, containers: any[] }) {
+  if (!isOpen || typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center p-6 border-b border-white/10">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Box className="w-5 h-5 text-indigo-400" /> 
+            Containers on {agentName}
+          </h2>
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-neutral-400 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto min-h-[300px]">
+          {containers.length === 0 ? (
+            <div className="text-center text-neutral-400 py-10">No containers found on this agent.</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {containers.map(c => (
+                <div key={c.id} className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col hover:bg-white/10 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-bold text-white truncate pr-2 text-sm" title={c.name}>{c.name}</span>
+                    <div className={`w-2.5 h-2.5 rounded-full mt-1.5 shrink-0 shadow-[0_0_8px_currentColor] ${c.state === 'running' ? 'bg-green-400 text-green-400 animate-pulse' : 'bg-red-500 text-red-500'}`} title={c.state}></div>
+                  </div>
+                  <div className="text-[11px] text-neutral-400 font-mono truncate mb-4" title={c.image}>{c.image}</div>
+                  <div className="mt-auto flex gap-2">
+                     <span className="text-[10px] px-2 py-1 rounded-md bg-black/40 border border-white/10 uppercase font-semibold text-neutral-300">{c.state}</span>
+                     <span className="text-[10px] px-2 py-1 rounded-md bg-black/40 border border-white/10 text-neutral-400 truncate w-full" title={c.status}>{c.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
