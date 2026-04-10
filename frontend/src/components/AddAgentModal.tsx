@@ -21,6 +21,36 @@ export default function AddAgentModal({
   const [copied, setCopied] = useState(false);
   const [copiedRaw, setCopiedRaw] = useState(false);
 
+  const fallbackCopyTextToClipboard = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+    } catch (err) {
+      console.error('Fallback: Oops, unable to copy', err);
+    }
+    document.body.removeChild(textArea);
+  };
+
+  const copyText = (text: string, setCopiedState: (v: boolean) => void) => {
+    if (!navigator.clipboard) {
+      fallbackCopyTextToClipboard(text);
+      setCopiedState(true);
+      setTimeout(() => setCopiedState(false), 2000);
+      return;
+    }
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedState(true);
+      setTimeout(() => setCopiedState(false), 2000);
+    });
+  };
+
   useEffect(() => {
     if (isOpen) {
       if (agentToEdit) {
@@ -101,9 +131,7 @@ services:
 `;
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(codeSnippet);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyText(codeSnippet, setCopied);
   };
 
   if (!isOpen || typeof document === 'undefined') return null;
@@ -142,7 +170,7 @@ services:
                       <div className="flex-1 min-w-0 bg-black/60 border border-white/10 rounded-lg px-3 py-2 text-neutral-300 font-mono text-[10px] break-all selection:bg-indigo-500/50 flex items-center">
                         {agentData.publicKeyBase64}
                       </div>
-                      <button type="button" onClick={() => { navigator.clipboard.writeText(agentData.publicKeyBase64); setCopiedRaw(true); setTimeout(() => setCopiedRaw(false), 2000); }} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors text-white shrink-0">
+                      <button type="button" onClick={() => copyText(agentData.publicKeyBase64, setCopiedRaw)} className="bg-white/10 hover:bg-white/20 p-2 rounded-lg transition-colors text-white shrink-0">
                           {copiedRaw ? <Check className="w-4 h-4 text-emerald-400"/> : <Copy className="w-4 h-4"/>}
                       </button>
                     </div>
@@ -172,7 +200,7 @@ services:
                    <div className="flex-1 min-w-0 bg-black/60 border border-white/10 rounded-lg px-4 py-3 text-neutral-300 font-mono text-xs break-all selection:bg-indigo-500/50">
                      {agentData.publicKeyBase64}
                    </div>
-                   <button onClick={() => { navigator.clipboard.writeText(agentData.publicKeyBase64); setCopiedRaw(true); setTimeout(() => setCopiedRaw(false), 2000); }} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors text-white shrink-0">
+                   <button type="button" onClick={() => copyText(agentData.publicKeyBase64, setCopiedRaw)} className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition-colors text-white shrink-0">
                       {copiedRaw ? <Check className="w-5 h-5 text-emerald-400"/> : <Copy className="w-5 h-5"/>}
                    </button>
                  </div>
