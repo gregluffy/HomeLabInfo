@@ -74,13 +74,15 @@ public class AgentsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateAgent(int id, [FromBody] RegisterAgentDto dto)
+    public async Task<IActionResult> UpdateAgent(int id, [FromBody] UpdateAgentDto dto)
     {
         var agent = await _context.VmAgents.FindAsync(id);
         if (agent == null) return NotFound();
 
-        agent.Name = dto.Name;
-        agent.EndpointUrl = dto.EndpointUrl.TrimEnd('/');
+        if (dto.Name != null) agent.Name = dto.Name;
+        if (dto.EndpointUrl != null) agent.EndpointUrl = dto.EndpointUrl.TrimEnd('/');
+        if (dto.PositionX.HasValue) agent.PositionX = dto.PositionX.Value;
+        if (dto.PositionY.HasValue) agent.PositionY = dto.PositionY.Value;
 
         await _context.SaveChangesAsync();
         return NoContent();
@@ -114,3 +116,4 @@ public class AgentsController : ControllerBase
 }
 
 public record RegisterAgentDto(string Name, string EndpointUrl);
+public record UpdateAgentDto(string? Name, string? EndpointUrl, float? PositionX, float? PositionY);

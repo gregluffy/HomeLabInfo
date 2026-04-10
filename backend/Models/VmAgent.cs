@@ -11,4 +11,6 @@ public class VmAgent
     public string PrivateKeyBase64 { get; set; } = string.Empty;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public float? PositionX { get; set; }
+    public float? PositionY { get; set; }
 }

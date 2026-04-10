@@ -11,4 +11,6 @@ public class NetworkDevice
     public string MacAddress { get; set; } = string.Empty;
     public string Status { get; set; } = "Online";
     public DateTime LastSeen { get; set; } = DateTime.UtcNow;
+    public float? PositionX { get; set; }
+    public float? PositionY { get; set; }
 }

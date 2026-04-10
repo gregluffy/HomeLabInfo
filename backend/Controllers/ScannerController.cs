@@ -64,4 +64,31 @@ public class ScannerController : ControllerBase
 
         return Ok(await _context.Devices.OrderBy(d => d.Id).ToListAsync());
     }
+
+    [HttpPut("devices/{id}")]
+    public async Task<IActionResult> UpdateDevice(int id, [FromBody] UpdateDeviceDto dto)
+    {
+        var device = await _context.Devices.FindAsync(id);
+        if (device == null) return NotFound();
+
+        if (dto.HostName != null) device.HostName = dto.HostName;
+        if (dto.PositionX.HasValue) device.PositionX = dto.PositionX.Value;
+        if (dto.PositionY.HasValue) device.PositionY = dto.PositionY.Value;
+
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("devices/{id}")]
+    public async Task<IActionResult> DeleteDevice(int id)
+    {
+        var device = await _context.Devices.FindAsync(id);
+        if (device == null) return NotFound();
+        
+        _context.Devices.Remove(device);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 }
+
+public record UpdateDeviceDto(string? HostName, float? PositionX, float? PositionY);
