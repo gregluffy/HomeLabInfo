@@ -21,7 +21,7 @@ export default function Dashboard() {
               Homelab Dashboard
             </h1>
             <p className="text-neutral-400 text-lg max-w-xl">
-              A high-level overview of your network and container typography.
+              A high-level overview of your network and container topography.
             </p>
           </div>
           <Link href="/topology" className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-white font-semibold transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2">
