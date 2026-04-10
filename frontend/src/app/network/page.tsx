@@ -62,13 +62,16 @@ export default function NetworkDetails() {
             Back to Dashboard
         </Link>
         <header className="flex flex-col md:flex-row justify-between items-center mb-16 gap-6">
-          <div>
-            <h1 className="text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-2">
-              Homelab Topology
-            </h1>
-            <p className="text-neutral-400 text-lg max-w-xl">
-              Real-time monitoring and discovery of your network infrastructure.
-            </p>
+          <div className="flex items-center gap-6">
+            <img src="/logo.svg" alt="HomeLab Logo" className="w-16 h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)] hidden sm:block" />
+            <div>
+              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-2">
+                Homelab Topology
+              </h1>
+              <p className="text-neutral-400 text-lg max-w-xl">
+                Real-time monitoring and discovery of your network infrastructure.
+              </p>
+            </div>
           </div>
           
           <div className="flex gap-4 p-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl items-center shadow-2xl">
