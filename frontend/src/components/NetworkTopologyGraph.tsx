@@ -17,6 +17,8 @@ import {
   Position,
   NodeMouseHandler,
   Panel,
+  ReactFlowProvider,
+  useReactFlow,
   getNodesBounds,
   getViewportForBounds
 } from '@xyflow/react';
@@ -73,12 +75,13 @@ const nodeTypes = {
   device: DeviceNode,
 };
 
-export default function NetworkTopologyGraph() {
+function InnerGraph() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [editName, setEditName] = useState("");
   const flowRef = useRef<HTMLDivElement>(null);
+  const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
   const loadGraph = useCallback(async () => {
     const initialNodes: Node[] = [];
