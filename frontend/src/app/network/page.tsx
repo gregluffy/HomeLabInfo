@@ -18,9 +18,11 @@ export default function NetworkDetails() {
   const [isScanning, setIsScanning] = useState(false);
   const [baseIp, setBaseIp] = useState("192.168.2.");
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
   const fetchDevices = async () => {
     try {
-      const res = await fetch(`/api/scanner/devices`);
+      const res = await fetch(`${apiUrl}/scanner/devices`);
       const data = await res.json();
       setDevices(data);
     } catch (err) {
@@ -35,7 +37,7 @@ export default function NetworkDetails() {
   const handleScan = async () => {
     setIsScanning(true);
     try {
-      const res = await fetch(`/api/scanner/scan?baseIp=${baseIp}`, {
+      const res = await fetch(`${apiUrl}/scanner/scan?baseIp=${baseIp}`, {
         method: "POST"
       });
       const data = await res.json();

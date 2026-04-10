@@ -22,11 +22,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      # THIS IS CRITICAL: Next.js needs the variable here at build time!
+      args:
+        - NEXT_PUBLIC_API_URL=http://192.168.2.71:9622/api
     ports:
       - "9623:3000"
     environment:
-      # We now use standard runtime rewrites! This fixes all caching issues.
-      - BACKEND_URL=http://192.168.2.71:9622/api
+      - NEXT_PUBLIC_API_URL=http://192.168.2.71:9622/api
     depends_on:
       - backend
 
