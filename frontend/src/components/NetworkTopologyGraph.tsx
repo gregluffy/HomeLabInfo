@@ -174,7 +174,7 @@ function InnerGraph() {
 
   // Handle PNG Export
   const downloadGraph = () => {
-    const nodesBounds = getNodesBounds(nodes);
+    const nodesBounds = getNodesBounds(getNodes()); // Pass explicitly retrieved nodes from XYFlow Context!
     const padding = 200;
     const imageWidth = nodesBounds.width + padding * 2;
     const imageHeight = nodesBounds.height + padding * 2;
@@ -327,5 +327,13 @@ function InnerGraph() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NetworkTopologyGraph() {
+  return (
+    <ReactFlowProvider>
+      <InnerGraph />
+    </ReactFlowProvider>
   );
 }
