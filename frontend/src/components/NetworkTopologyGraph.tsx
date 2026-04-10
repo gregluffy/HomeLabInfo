@@ -16,7 +16,9 @@ import {
   Handle,
   Position,
   NodeMouseHandler,
-  Panel
+  Panel,
+  getNodesBounds,
+  getViewportForBounds
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Server, Router, Download, X, Save, Trash2 } from 'lucide-react';
@@ -169,8 +171,33 @@ export default function NetworkTopologyGraph() {
 
   // Handle PNG Export
   const downloadGraph = () => {
-    if (!flowRef.current) return;
-    toPng(flowRef.current, { backgroundColor: '#0a0a0a', width: 1920, height: 1080 }).then((dataUrl) => {
+    const nodesBounds = getNodesBounds(nodes);
+    const padding = 200;
+    const imageWidth = nodesBounds.width + padding * 2;
+    const imageHeight = nodesBounds.height + padding * 2;
+
+    const viewport = getViewportForBounds(
+      nodesBounds,
+      imageWidth,
+      imageHeight,
+      0.5,
+      2,
+      0 // padding
+    );
+
+    const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement;
+    if (!viewportEl) return;
+
+    toPng(viewportEl, {
+      backgroundColor: '#0a0a0a',
+      width: imageWidth,
+      height: imageHeight,
+      style: {
+        width: `${imageWidth}px`,
+        height: `${imageHeight}px`,
+        transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+      },
+    }).then((dataUrl) => {
       const a = document.createElement('a');
       a.href = dataUrl;
       a.download = `homelab-topology-${new Date().toISOString().split('T')[0]}.png`;
