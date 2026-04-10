@@ -5,10 +5,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "5000:8080"
+    # ports mapping is ignored due to network_mode: "host"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      # It's recommended to use + to listen on all interfaces, so the app binds successfully even if the IP changes
+      - ASPNETCORE_URLS=http://+:9622
     volumes:
       - data_volume:/app/data
     cap_add:
@@ -22,11 +23,32 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "9623:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
+      # We now use standard runtime rewrites! This fixes all caching issues.
+      - BACKEND_URL=http://192.168.2.71:9622/api
     depends_on:
       - backend
+
+  homelab-agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    container_name: homelab-agent
+    restart: unless-stopped
+    ports:
+      - "9624:8080" # Exposed agent port to Hub
+    volumes:
+      # Mount docker socket to read container stats
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Mount host root to read accurate host OS metrics (Disk)
+      - /:/host:ro
+      # Allow access to host proc for CPU/RAM
+      - /proc:/host/proc:ro
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # SECURITY: Provide the public key from the Hub dashboard configuration
+      - HUB_PUBLIC_KEY=CHANGE_ME
 
 volumes:
   data_volume:
