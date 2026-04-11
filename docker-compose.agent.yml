@@ -11,7 +11,7 @@
 
 services:
   homelab-agent:
-    image: yourusername/homelabinfo-agent:latest
+    image: gfountopoulos/homelabinfo-agent:latest
     # build:
     #   context: ./agent
     #   dockerfile: Dockerfile
