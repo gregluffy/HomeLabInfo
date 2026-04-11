@@ -1,74 +1,583 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
-  <defs>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 200 200"
+   width="100%"
+   height="100%"
+   version="1.1"
+   id="svg12"
+   sodipodi:docname="logo.svg"
+   inkscape:version="1.4.3 (0d15f75, 2025-12-25)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview12"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="2.062984"
+     inkscape:cx="48.958207"
+     inkscape:cy="96.219843"
+     inkscape:window-width="1920"
+     inkscape:window-height="1009"
+     inkscape:window-x="-8"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg12" />
+  <defs
+     id="defs4">
     <!-- Deep Indigo to Electric Blue glow mapping -->
-    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#3B82F6" />
-      <stop offset="50%" stop-color="#8B5CF6" />
-      <stop offset="100%" stop-color="#60A5FA" />
+    <linearGradient
+       id="neonGradient"
+       x1="0%"
+       y1="0%"
+       x2="100%"
+       y2="100%">
+      <stop
+         offset="0%"
+         stop-color="#3B82F6"
+         id="stop1" />
+      <stop
+         offset="50%"
+         stop-color="#8B5CF6"
+         id="stop2" />
+      <stop
+         offset="100%"
+         stop-color="#60A5FA"
+         id="stop3" />
     </linearGradient>
-
     <!-- Outer Soft Neon Glow Filter -->
-    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="6" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter
+       id="softGlow"
+       x="-0.82"
+       y="-0.82"
+       width="2.64"
+       height="2.64">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur3" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite3" />
     </filter>
-
     <!-- Intense Core Glow Filter -->
-    <filter id="coreGlow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="2" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <filter
+       id="coreGlow"
+       x="-0.6"
+       y="-0.6"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur4" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite4" />
+    </filter>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath6">
+      <rect
+         style="fill:#333333;fill-opacity:1;stroke:#000000;stroke-width:1.26286;stroke-opacity:1"
+         id="rect6"
+         width="172.87642"
+         height="175.76207"
+         x="8.5618076"
+         y="0.23222131" />
+    </clipPath>
+    <filter
+       id="softGlow-4"
+       x="-0.82"
+       y="-0.82"
+       width="2.64"
+       height="2.64">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur3-5" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite3-5" />
+    </filter>
+    <filter
+       id="coreGlow-1"
+       x="-0.6"
+       y="-0.6"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur4-7" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite4-1" />
+    </filter>
+    <filter
+       id="filter6"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur6" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite6" />
+    </filter>
+    <filter
+       id="filter7"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur7" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite7" />
+    </filter>
+    <filter
+       id="filter9"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur9" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite9" />
+    </filter>
+    <filter
+       id="filter10"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur10" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite10" />
+    </filter>
+    <filter
+       id="filter12"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur12" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite12" />
+    </filter>
+    <filter
+       id="filter13"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur13" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite13" />
+    </filter>
+    <filter
+       id="filter15"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur15" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite15" />
+    </filter>
+    <filter
+       id="filter16"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur16" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite16" />
+    </filter>
+    <clipPath
+       clipPathUnits="userSpaceOnUse"
+       id="clipPath6-1">
+      <rect
+         style="fill:#333333;fill-opacity:1;stroke:#000000;stroke-width:1.27155;stroke-opacity:1"
+         id="rect6-5"
+         width="175.27245"
+         height="175.75339"
+         x="7.3637791"
+         y="0.2365548" />
+    </clipPath>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#neonGradient"
+       id="linearGradient16"
+       x1="-60.53315"
+       y1="-79.205696"
+       x2="264.15082"
+       y2="245.47827"
+       gradientTransform="scale(0.94351622,1.0598652)"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       id="softGlow-1"
+       x="-0.82"
+       y="-0.82"
+       width="2.64"
+       height="2.64">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur3-4" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite3-2" />
+    </filter>
+    <filter
+       id="coreGlow-3"
+       x="-0.6"
+       y="-0.6"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur4-2" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite4-2" />
+    </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#neonGradient"
+       id="linearGradient17"
+       x1="-62.776424"
+       y1="-79.205696"
+       x2="261.90756"
+       y2="245.47827"
+       gradientTransform="scale(0.94351622,1.0598652)"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       id="filter6-1"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur6-6" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite6-8" />
+    </filter>
+    <filter
+       id="filter7-5"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur7-7" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite7-6" />
+    </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#neonGradient"
+       id="linearGradient18"
+       x1="13.04"
+       y1="3.0400002"
+       x2="86.960007"
+       y2="76.960007"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       id="filter9-1"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur9-8" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite9-9" />
+    </filter>
+    <filter
+       id="filter10-2"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur10-7" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite10-9" />
+    </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#neonGradient"
+       id="linearGradient19"
+       x1="113.6"
+       y1="13.6"
+       x2="166.39999"
+       y2="66.400002"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       id="filter12-5"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur12-4" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite12-3" />
+    </filter>
+    <filter
+       id="filter13-1"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur13-2" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite13-3" />
+    </filter>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#neonGradient"
+       id="linearGradient20"
+       x1="63.32"
+       y1="108.32"
+       x2="126.68"
+       y2="171.67999"
+       gradientUnits="userSpaceOnUse" />
+    <filter
+       id="filter15-3"
+       x="-0.81999999"
+       y="-0.81999999"
+       width="2.6400001"
+       height="2.6400001">
+      <feGaussianBlur
+         stdDeviation="6"
+         result="blur"
+         id="feGaussianBlur15-4" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite15-1" />
+    </filter>
+    <filter
+       id="filter16-1"
+       x="-0.60000002"
+       y="-0.60000002"
+       width="2.2"
+       height="2.2">
+      <feGaussianBlur
+         stdDeviation="2"
+         result="blur"
+         id="feGaussianBlur16-3" />
+      <feComposite
+         in="SourceGraphic"
+         in2="blur"
+         operator="over"
+         id="feComposite16-8" />
     </filter>
   </defs>
-
   <!-- Dark minimal background omitted for true transparency on app headers -->
-  
-  <g transform="translate(10, 10)">
+  <g
+     transform="translate(4.7620992,11.572758)"
+     id="g12"
+     style="fill:none;fill-opacity:1"
+     clip-path="url(#clipPath6-1)">
     <!-- Main fluid swoosh 1 -->
-    <path 
-      d="M 50,40 C 130,-10 180,60 140,120 C 100,180 50,150 40,100 C 30,50 60,30 90,60" 
-      fill="none" 
-      stroke="url(#neonGradient)" 
-      stroke-width="12" 
-      stroke-linecap="round" 
-      filter="url(#softGlow)" />
-      
+    <path
+       d="m 50,40 c 80,-50 130,20 90,80 C 100,180 50,150 40,100 30,50 60,30 90,60"
+       fill="none"
+       stroke="url(#neonGradient)"
+       stroke-width="12"
+       stroke-linecap="round"
+       filter="url(#softGlow)"
+       id="path4"
+       style="fill:none;fill-opacity:1;stroke:url(#linearGradient16);filter:url(#softGlow-1)" />
     <!-- Core high-intensity swoosh 1 -->
-    <path 
-      d="M 50,40 C 130,-10 180,60 140,120 C 100,180 50,150 40,100 C 30,50 60,30 90,60" 
-      fill="none" 
-      stroke="#FFFFFF" 
-      stroke-width="3" 
-      stroke-linecap="round" 
-      opacity="0.6"
-      filter="url(#coreGlow)" />
-
+    <path
+       d="m 50,40 c 80,-50 130,20 90,80 C 100,180 50,150 40,100 30,50 60,30 90,60"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="3"
+       stroke-linecap="round"
+       opacity="0.6"
+       filter="url(#coreGlow)"
+       id="path5"
+       style="fill:none;fill-opacity:1;filter:url(#coreGlow-3)" />
     <!-- Main fluid swoosh 2 (interconnected node) -->
-    <path 
-      d="M 140,40 C 60,-10 10,60 50,120 C 90,180 140,150 150,100 C 160,50 130,30 100,60" 
-      fill="none" 
-      stroke="url(#neonGradient)" 
-      stroke-width="12" 
-      stroke-linecap="round" 
-      filter="url(#softGlow)" />
-      
+    <path
+       d="M 140,40 C 60,-10 10,60 50,120 90,180 140,150 150,100 160,50 130,30 100,60"
+       fill="none"
+       stroke="url(#neonGradient)"
+       stroke-width="12"
+       stroke-linecap="round"
+       filter="url(#softGlow)"
+       id="path6"
+       style="fill:none;fill-opacity:1;stroke:url(#linearGradient17);filter:url(#softGlow-1)" />
     <!-- Core high-intensity swoosh 2 -->
-    <path 
-      d="M 140,40 C 60,-10 10,60 50,120 C 90,180 140,150 150,100 C 160,50 130,30 100,60" 
-      fill="none" 
-      stroke="#FFFFFF" 
-      stroke-width="3" 
-      stroke-linecap="round" 
-      opacity="0.6"
-      filter="url(#coreGlow)" />
-      
+    <path
+       d="M 140,40 C 60,-10 10,60 50,120 90,180 140,150 150,100 160,50 130,30 100,60"
+       fill="none"
+       stroke="#ffffff"
+       stroke-width="3"
+       stroke-linecap="round"
+       opacity="0.6"
+       filter="url(#coreGlow)"
+       id="path7"
+       style="fill:none;fill-opacity:1;filter:url(#coreGlow-3)" />
     <!-- Abstract connected networking nodes -->
-    <circle cx="50" cy="40" r="14" fill="#09090b" stroke="url(#neonGradient)" stroke-width="4" filter="url(#softGlow)" />
-    <circle cx="50" cy="40" r="6" fill="#60A5FA" filter="url(#coreGlow)" />
-
-    <circle cx="140" cy="40" r="10" fill="#09090b" stroke="url(#neonGradient)" stroke-width="4" filter="url(#softGlow)" />
-    <circle cx="140" cy="40" r="4" fill="#8B5CF6" filter="url(#coreGlow)" />
-
-    <circle cx="95" cy="140" r="12" fill="#09090b" stroke="url(#neonGradient)" stroke-width="4" filter="url(#softGlow)" />
-    <circle cx="95" cy="140" r="5" fill="#3B82F6" filter="url(#coreGlow)" />
+    <circle
+       cx="50"
+       cy="40"
+       r="14"
+       fill="#09090b"
+       stroke="url(#neonGradient)"
+       stroke-width="4"
+       filter="url(#softGlow)"
+       id="circle7"
+       style="fill:none;fill-opacity:1;stroke:url(#linearGradient18);filter:url(#softGlow-1)" />
+    <circle
+       cx="50"
+       cy="40"
+       r="6"
+       fill="#60a5fa"
+       filter="url(#coreGlow)"
+       id="circle8"
+       style="fill:none;fill-opacity:1;filter:url(#coreGlow-3)" />
+    <circle
+       cx="140"
+       cy="40"
+       r="10"
+       fill="#09090b"
+       stroke="url(#neonGradient)"
+       stroke-width="4"
+       filter="url(#softGlow)"
+       id="circle9"
+       style="fill:none;fill-opacity:1;stroke:url(#linearGradient19);filter:url(#softGlow-1)" />
+    <circle
+       cx="140"
+       cy="40"
+       r="4"
+       fill="#8b5cf6"
+       filter="url(#coreGlow)"
+       id="circle10"
+       style="fill:none;fill-opacity:1;filter:url(#coreGlow-3)" />
+    <circle
+       cx="95"
+       cy="140"
+       r="12"
+       fill="#09090b"
+       stroke="url(#neonGradient)"
+       stroke-width="4"
+       filter="url(#softGlow)"
+       id="circle11"
+       style="fill:none;fill-opacity:1;stroke:url(#linearGradient20);filter:url(#softGlow-1)" />
+    <circle
+       cx="95"
+       cy="140"
+       r="5"
+       fill="#3b82f6"
+       filter="url(#coreGlow)"
+       id="circle12"
+       style="fill:none;fill-opacity:1;filter:url(#coreGlow-3)" />
   </g>
 </svg>
