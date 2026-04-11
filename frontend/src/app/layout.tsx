@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import packageJson from "../../package.json";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +28,18 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-[#0a0a0a] text-white">
+        <main className="flex-grow">
+          {children}
+        </main>
+        <footer className="py-3 px-6 border-t border-white/5 flex justify-between items-center text-[10px] uppercase tracking-wider text-white/30">
+          <div>HomeLabInfo System</div>
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50 animate-pulse"></span>
+            v{packageJson.version}
+          </div>
+        </footer>
+      </body>
     </html>
   );
 }
