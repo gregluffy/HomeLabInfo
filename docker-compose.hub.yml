@@ -1,9 +1,12 @@
 # =============================================================================
-# HomeLab Info — All-in-One (Hub + Agent on the same machine)
+# HomeLab Info — Hub Only (Frontend + Backend)
 # =============================================================================
+# Deploy this on your main server. Run agents separately on other machines
+# using docker-compose.agent.yml.
+#
 # 1. Copy this file to your server
 # 2. Edit the environment variables below
-# 3. Run: docker compose up -d
+# 3. Run: docker compose -f docker-compose.hub.yml up -d
 # =============================================================================
 
 services:
@@ -29,21 +32,3 @@ services:
       - NET_RAW
     # Required for network scanning (ARP/ping) to work correctly
     network_mode: "host"
-
-  homelab-agent:
-    image: yourusername/homelab-agent:latest
-    # build:
-    #   context: ./agent
-    #   dockerfile: Dockerfile
-    container_name: homelab-agent
-    restart: unless-stopped
-    ports:
-      - "9624:8080"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /:/host:ro
-      - /proc:/host/proc:ro
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      # REQUIRED: Paste the public key from your HomeLab Info dashboard
-      - HUB_PUBLIC_KEY=CHANGE_ME
