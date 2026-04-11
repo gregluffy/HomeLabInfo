@@ -1,5 +1,7 @@
 HomeLabInfo is a self-hosted, cross-platform network scanner and visualization dashboard designed to help you manage and map your homelab infrastructure.
 
+**GitHub Repository:** [https://github.com/gregluffy/HomeLabInfo](https://github.com/gregluffy/HomeLabInfo)
+
 ![Homepage View](assets/homepage-view.png)
 
 
@@ -78,4 +80,5 @@ services:
 *   **Architecture:** Optimized for low-resource environments (RPi, Home Servers).
 *   **License:** GNU GPLv3.
 
-For the full source code, contribution guidelines, and advanced configurations, visit the **[GitHub Repository](https://github.com/gfountopoulos/HomeLabInfo)**.
+For the full source code, contribution guidelines, and advanced configurations, visit the **[GitHub Repository](https://github.com/gregluffy/HomeLabInfo)**.
+
