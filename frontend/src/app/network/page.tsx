@@ -17,6 +17,7 @@ export default function NetworkDetails() {
   const [devices, setDevices] = useState<NetworkDevice[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [baseIp, setBaseIp] = useState("192.168.2.");
+  const [deepScan, setDeepScan] = useState(true);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -30,14 +31,34 @@ export default function NetworkDetails() {
     }
   };
 
+  // Load saved base IP from DB on mount
   useEffect(() => {
     fetchDevices();
+
+    (async () => {
+      try {
+        const res = await fetch(`${apiUrl}/settings/BaseIpPrefix`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) setBaseIp(data.value);
+        }
+      } catch {
+        // Setting doesn't exist yet, use default
+      }
+    })();
   }, []);
 
   const handleScan = async () => {
     setIsScanning(true);
     try {
-      const res = await fetch(`${apiUrl}/scanner/scan?baseIp=${baseIp}`, {
+      // Persist the base IP for next time
+      await fetch(`${apiUrl}/settings/BaseIpPrefix`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: baseIp })
+      }).catch(() => {});
+
+      const res = await fetch(`${apiUrl}/scanner/scan?baseIp=${baseIp}&doPortScan=${deepScan}`, {
         method: "POST"
       });
       const data = await res.json();
@@ -82,6 +103,29 @@ export default function NetworkDetails() {
                 className="bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-40 font-mono text-sm"
                 placeholder="192.168.1."
               />
+
+              {/* Deep Scan Toggle */}
+              <div className="relative group flex items-center gap-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deepScan}
+                    onChange={(e) => setDeepScan(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+                <span className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none">Deep Scan</span>
+
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 p-3 bg-neutral-900 border border-white/10 rounded-xl text-xs text-neutral-300 leading-relaxed shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
+                  <p className="font-bold text-white mb-1">🔍 Deep Scan</p>
+                  <p>When enabled, the scanner probes open ports (SSH, HTTP) to identify device operating systems and running services.</p>
+                  <p className="mt-2 text-amber-400/90">⚠️ Disable this if your network has strict firewalls or IDS/IPS that may flag port scanning activity.</p>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-neutral-900"></div>
+                </div>
+              </div>
+
               <button 
                 onClick={handleScan}
                 disabled={isScanning}

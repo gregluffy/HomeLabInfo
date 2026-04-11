@@ -23,7 +23,7 @@ import {
   getViewportForBounds
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Server, Router, Download, X, Save, Trash2 } from 'lucide-react';
+import { Server, Router, Download, X, Save, Trash2, Box } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Custom Node types
@@ -70,9 +70,39 @@ function DeviceNode({ data }: { data: any }) {
   );
 }
 
+function ContainerNode({ data }: { data: any }) {
+  const isRunning = data.state === 'running';
+
+  return (
+    <div className={`bg-neutral-900/90 border-2 p-4 rounded-xl shadow-md w-[190px] transition-all hover:scale-105 cursor-pointer
+      ${isRunning ? 'border-cyan-500/70 shadow-cyan-900/20' : 'border-neutral-600/50 opacity-60'}`}>
+      <Handle type="target" position={Position.Top} className={`!w-2.5 !h-2.5 ${isRunning ? '!bg-cyan-500' : '!bg-neutral-500'}`} />
+      <div className={`flex items-center gap-2.5 border-b pb-2.5 mb-2.5 ${isRunning ? 'border-cyan-500/20' : 'border-neutral-700/30'}`}>
+        <div className={`p-1.5 rounded-md shrink-0 ${isRunning ? 'bg-cyan-500/15 text-cyan-400' : 'bg-neutral-700/20 text-neutral-500'}`}>
+          <Box className="w-4 h-4" />
+        </div>
+        <h3 className="text-[13px] font-bold text-white truncate" title={data.label}>{data.label}</h3>
+      </div>
+      <div className="space-y-1">
+        <div className="flex justify-between items-center text-[10px] font-mono">
+           <span className="text-neutral-500">IMAGE</span>
+           <span className="text-cyan-300/80 truncate max-w-[100px]" title={data.image}>{data.image}</span>
+        </div>
+        <div className="flex justify-between items-center text-[10px] font-mono">
+           <span className="text-neutral-500">STATE</span>
+           <span className={`font-bold px-1.5 py-0.5 rounded ${isRunning ? 'text-cyan-300 bg-cyan-500/10' : 'text-neutral-400 bg-neutral-700/20'}`}>
+             {data.statusText || data.state}
+           </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const nodeTypes = {
   vm: VmNode,
   device: DeviceNode,
+  container: ContainerNode,
 };
 
 function InnerGraph() {
@@ -101,8 +131,8 @@ function InnerGraph() {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`).catch((e) => { console.error("Agent fetch error", e); return null; })
       ]);
       
-      let devices = [];
-      let agents = [];
+      let devices: any[] = [];
+      let agents: any[] = [];
       
       if (devicesRes && devicesRes.ok) {
          try { devices = await devicesRes.json(); } catch(e) { console.error("Device JSON error", e); }
@@ -136,6 +166,86 @@ function InnerGraph() {
           });
           initialEdges.push({ id: `e-router-${id}`, source: 'router', target: id, animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
         });
+
+        // For each agent, extract its IP from endpointUrl and check if it matches a device
+        // If matched, fetch containers and add them as child nodes
+        const containerFetches = agents.map(async (a: any) => {
+          try {
+            // Extract IP from endpoint URL (e.g. "http://192.168.1.50:8080" -> "192.168.1.50")
+            let agentIp: string | null = null;
+            try {
+              const url = new URL(a.endpointUrl);
+              agentIp = url.hostname;
+            } catch { return; }
+
+            // Check if this IP exists in our scanned devices
+            const matchingDevice = devices.find((d: any) => d.ipAddress === agentIp);
+            if (!matchingDevice) return;
+
+            // Agent IP matches a network device — fetch its containers
+            const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${a.id}/stats`).catch(() => null);
+            if (!statsRes || !statsRes.ok) return;
+            
+            let statsData: any;
+            try { statsData = await statsRes.json(); } catch { return; }
+            
+            const containers = statsData?.containers;
+            if (!Array.isArray(containers) || containers.length === 0) return;
+
+            const agentNodeId = `agent-${a.id}`;
+            const agentNode = initialNodes.find(n => n.id === agentNodeId);
+            const baseX = agentNode?.position.x ?? (200 + agents.indexOf(a) * 250);
+            const baseY = agentNode?.position.y ?? 600;
+
+            // Arrange containers in a semi-circular arc below the agent node
+            const containerCount = containers.length;
+            const spacing = 220;
+            const rowSize = Math.min(containerCount, 4); // max 4 per row
+            const rows = Math.ceil(containerCount / rowSize);
+
+            containers.forEach((c: any, cIdx: number) => {
+              const row = Math.floor(cIdx / rowSize);
+              const col = cIdx % rowSize;
+              const rowItemCount = Math.min(rowSize, containerCount - row * rowSize);
+              const rowOffset = (rowItemCount - 1) * spacing / 2;
+
+              const containerId = `container-${a.id}-${cIdx}`;
+              const containerName = (c.name || c.id || 'container').replace(/^\//, '');
+
+              initialNodes.push({
+                id: containerId,
+                type: 'container',
+                position: {
+                  x: baseX + (col * spacing) - rowOffset,
+                  y: baseY + 200 + (row * 160)
+                },
+                data: {
+                  label: containerName,
+                  image: c.image || 'unknown',
+                  state: c.state || 'unknown',
+                  statusText: c.status || c.state || 'unknown'
+                }
+              });
+
+              initialEdges.push({
+                id: `e-${agentNodeId}-${containerId}`,
+                source: agentNodeId,
+                target: containerId,
+                animated: c.state === 'running',
+                style: {
+                  stroke: c.state === 'running' ? '#06b6d4' : '#525252',
+                  strokeWidth: 1.5,
+                  strokeDasharray: c.state === 'running' ? undefined : '5,5',
+                  opacity: c.state === 'running' ? 0.8 : 0.4
+                }
+              });
+            });
+          } catch (err) {
+            console.error(`Failed to fetch containers for agent ${a.id}`, err);
+          }
+        });
+
+        await Promise.all(containerFetches);
       }
     } catch (err) {
       console.error("Failed to load topology", err);
@@ -211,6 +321,7 @@ function InnerGraph() {
   // Handle Modals 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback((_, node) => {
     if (node.id === 'router') return; // Cannot edit main router
+    if (node.id.startsWith('container-')) return; // Container nodes are read-only
     setEditingNode(node);
     setEditName(node.data.label as string);
   }, []);
