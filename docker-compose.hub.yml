@@ -11,7 +11,7 @@
 
 services:
   homelabinfo:
-    image: yourusername/homelabinfo:latest
+    image: gfountopoulos/homelabinfo:latest
     # build:
     #   context: .
     #   dockerfile: Dockerfile

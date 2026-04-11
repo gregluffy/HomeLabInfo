@@ -11,11 +11,11 @@
 
 services:
   homelab-agent:
-    image: yourusername/homelab-agent:latest
+    image: gfountopoulos/homelabinfo-agent:latest
     # build:
     #   context: ./agent
     #   dockerfile: Dockerfile
-    container_name: homelab-agent
+    container_name: homelabinfo-agent
     restart: unless-stopped
     ports:
       # Expose the agent port — the Hub will call this to fetch stats
