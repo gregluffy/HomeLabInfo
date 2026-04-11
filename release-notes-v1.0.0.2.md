@@ -5,7 +5,7 @@ This release marks the first stable foundation of **HomeLabInfo**, a modern, .NE
 ## ✨ What’s New
 This update consolidates our core services into a unified, containerized stack, making it easier than ever to deploy and monitor your servers.
 
-*   **Unified Dashboard**: A sleek, React/Vite-powered interface to visualize your network topology and container health in real-time.
+*   **Unified Dashboard**: A sleek, Next.js-powered interface to visualize your network topology and container health in real-time.
 *   **Persistent Network Discovery**: Integrated network scanner that maps your local devices and tracks their online/offline status, with persistence powered by SQLite.
 *   **Remote Agent System**: A lightweight .NET 10 agent that can be deployed on any machine to report container stats, CPU, RAM, and Disk metrics back to your central hub.
 *   **Docker Integration**: Native monitoring of local and remote Docker containers with status indicators and performance metrics.

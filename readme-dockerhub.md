@@ -76,7 +76,7 @@ services:
 ---
 
 ## Technical Core
-*   **Built with:** .NET 10 (ASP.NET Core), React, Docker.
+*   **Built with:** .NET 10 (ASP.NET Core), Next.js, Docker.
 *   **Architecture:** Optimized for low-resource environments (RPi, Home Servers).
 *   **License:** GNU GPLv3.
 
