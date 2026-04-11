@@ -1,5 +1,8 @@
 # HomeLabInfo
 
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-blue?logo=github)](https://github.com/gregluffy/HomeLabInfo)
+
+
 HomeLabInfo is a self-hosted, cross-platform network scanner and visualization dashboard designed to help you manage and map your homelab infrastructure.
 
 ![Homepage View](assets/homepage-view.png)
