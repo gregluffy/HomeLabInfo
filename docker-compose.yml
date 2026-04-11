@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -11,7 +9,8 @@ services:
       # It's recommended to use + to listen on all interfaces, so the app binds successfully even if the IP changes
       - ASPNETCORE_URLS=http://+:9622
     volumes:
-      - data_volume:/app/data
+      # - database:/app/Database
+      - ./database:/app/Database // Local volume
     cap_add:
       - NET_ADMIN
       - NET_RAW
@@ -52,5 +51,5 @@ services:
       # SECURITY: Provide the public key from the Hub dashboard configuration
       - HUB_PUBLIC_KEY=CHANGE_ME
 
-volumes:
-  data_volume:
+# volumes:
+#   database:
