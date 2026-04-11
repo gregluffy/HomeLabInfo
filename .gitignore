@@ -36,3 +36,4 @@ Instructions
 
 # Ignore local config with secrets
 agent/appsettings.json
+homelab.db

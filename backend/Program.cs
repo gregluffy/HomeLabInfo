@@ -11,7 +11,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=homelab.db"));
+    options.UseSqlite($"Data Source={Path.Combine("Database", "homelab.db")}"));
 
 builder.Services.AddScoped<NetworkScannerService>();
 builder.Services.AddSingleton<CryptographyService>();
@@ -36,6 +36,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+
+// Ensure the Database directory exists before migrating
+Directory.CreateDirectory("Database");
 
 using (var scope = app.Services.CreateScope())
 {
