@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -20,16 +20,36 @@ import {
   ReactFlowProvider,
   useReactFlow,
   getNodesBounds,
-  getViewportForBounds
+  getViewportForBounds,
+  Viewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Server, Router, Download, X, Save, Trash2, Box } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Custom Node types
-function VmNode({ data }: { data: any }) {
+function MetricBar({ label, used, total, unit, decimals = 0 }: { label: string; used: number; total: number; unit: string; decimals?: number }) {
+  if (!total) return null;
+  const pct = Math.min(100, Math.round((used / total) * 100));
+  const fmt = (v: number) => `${v.toFixed(decimals)}${unit}`;
+  const barColor = pct > 85 ? 'bg-rose-500' : pct > 65 ? 'bg-amber-400' : 'bg-indigo-500';
   return (
-    <div className="bg-neutral-900 border-[3px] border-indigo-500/80 p-5 rounded-2xl shadow-lg shadow-indigo-900/30 w-[220px]">
+    <div className="mb-2 last:mb-0">
+      <div className="flex justify-between items-center text-[10px] font-mono mb-1">
+        <span className="text-neutral-500">{label}</span>
+        <span className="text-indigo-300/90">{fmt(used)}&nbsp;/&nbsp;{fmt(total)}&nbsp;<span className="text-neutral-400">({pct}%)</span></span>
+      </div>
+      <div className="h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function VmNode({ data }: { data: any }) {
+  const hasMetrics = data.memTotal != null && data.memTotal > 0;
+  return (
+    <div className="bg-neutral-900 border-[3px] border-indigo-500/80 p-5 rounded-2xl shadow-lg shadow-indigo-900/30 w-[240px]">
       <Handle type="target" position={Position.Top} className="!bg-indigo-500 !w-3 !h-3" />
       <div className="flex items-center gap-3 border-b border-indigo-500/30 pb-3 mb-3">
         <div className="p-2 bg-indigo-500/20 rounded-lg shrink-0">
@@ -37,10 +57,16 @@ function VmNode({ data }: { data: any }) {
         </div>
         <h3 className="text-[15px] font-bold text-white truncate">{data.label}</h3>
       </div>
-      <div className="flex justify-between items-center text-xs font-mono">
+      <div className="flex justify-between items-center text-xs font-mono mb-3">
          <span className="text-neutral-500">TYPE</span>
          <span className="text-indigo-300 font-bold bg-indigo-500/10 px-2 py-0.5 rounded">VM AGENT</span>
       </div>
+      {hasMetrics && (
+        <div className="border-t border-indigo-500/20 pt-3 space-y-2">
+          <MetricBar label="RAM" used={data.memUsed / 1024} total={data.memTotal / 1024} unit="GB" decimals={1} />
+          <MetricBar label="DISK" used={data.diskUsed} total={data.diskTotal} unit="GB" decimals={1} />
+        </div>
+      )}
       <Handle type="source" position={Position.Bottom} className="!bg-indigo-500 !w-3 !h-3" />
     </div>
   );
@@ -113,6 +139,19 @@ function InnerGraph() {
   const flowRef = useRef<HTMLDivElement>(null);
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
+  // Restore saved viewport (zoom + pan) from localStorage
+  const savedViewport = useMemo<Viewport | null>(() => {
+    try {
+      const raw = localStorage.getItem('topology-viewport');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
+
+  // Persist viewport changes (pan + zoom) to localStorage
+  const onMoveEnd = useCallback((_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+    localStorage.setItem('topology-viewport', JSON.stringify(viewport));
+  }, []);
+
   const loadGraph = useCallback(async () => {
     const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
@@ -141,6 +180,7 @@ function InnerGraph() {
          try { agents = await agentsRes.json(); } catch(e) { console.error("Agent JSON error", e); }
       }
 
+      // Add device nodes
       if (Array.isArray(devices)) {
         devices.forEach((d: any, index: number) => {
           if (d.ipAddress === "192.168.1.1") return; 
@@ -156,96 +196,130 @@ function InnerGraph() {
       }
 
       if (Array.isArray(agents)) {
-        agents.forEach((a: any, index: number) => {
-          const id = `agent-${a.id}`;
-          initialNodes.push({
-            id,
-            type: 'vm',
-            position: { x: a.positionX ?? (200 + (index * 250)), y: a.positionY ?? 600 },
-            data: { label: a.name, rawAgent: a }
-          });
-          initialEdges.push({ id: `e-router-${id}`, source: 'router', target: id, animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
-        });
-
-        // For each agent, extract its IP from endpointUrl and check if it matches a device
-        // If matched, fetch containers and add them as child nodes
-        const containerFetches = agents.map(async (a: any) => {
-          try {
-            // Extract IP from endpoint URL (e.g. "http://192.168.1.50:8080" -> "192.168.1.50")
-            let agentIp: string | null = null;
+        // ── Pass 1: fetch every agent's containers in parallel ────────────────
+        const agentContainerData = await Promise.all(
+          agents.map(async (a: any) => {
+            const empty = { agent: a, containers: [], hostMetrics: null as any };
             try {
-              const url = new URL(a.endpointUrl);
-              agentIp = url.hostname;
-            } catch { return; }
+              let agentIp: string | null = null;
+              try { const url = new URL(a.endpointUrl); agentIp = url.hostname; } catch { return empty; }
 
-            // Check if this IP exists in our scanned devices
-            const matchingDevice = devices.find((d: any) => d.ipAddress === agentIp);
-            if (!matchingDevice) return;
+              // Always fetch stats — we need host metrics regardless of device match
+              const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${a.id}/stats`).catch(() => null);
+              if (!statsRes || !statsRes.ok) return empty;
 
-            // Agent IP matches a network device — fetch its containers
-            const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${a.id}/stats`).catch(() => null);
-            if (!statsRes || !statsRes.ok) return;
-            
-            let statsData: any;
-            try { statsData = await statsRes.json(); } catch { return; }
-            
-            const containers = statsData?.containers;
-            if (!Array.isArray(containers) || containers.length === 0) return;
+              let statsData: any;
+              try { statsData = await statsRes.json(); } catch { return empty; }
 
-            const agentNodeId = `agent-${a.id}`;
-            const agentNode = initialNodes.find(n => n.id === agentNodeId);
-            const baseX = agentNode?.position.x ?? (200 + agents.indexOf(a) * 250);
-            const baseY = agentNode?.position.y ?? 600;
+              const host = statsData?.host ?? statsData?.Host ?? null;
+              const hostMetrics = host ? {
+                memoryUsedMB:  host.memoryUsedMB  ?? host.MemoryUsedMB  ?? 0,
+                memoryTotalMB: host.memoryTotalMB ?? host.MemoryTotalMB ?? 0,
+                diskUsedGB:    host.diskUsedGB    ?? host.DiskUsedGB    ?? 0,
+                diskTotalGB:   host.diskTotalGB   ?? host.DiskTotalGB   ?? 0
+              } : null;
+              // Containers are only shown when the agent IP matches a scanned device
+              const matchingDevice = devices.find((d: any) => d.ipAddress === agentIp);
+              const containers = matchingDevice && Array.isArray(statsData?.containers) ? statsData.containers : [];
+              return { agent: a, containers, hostMetrics };
+            } catch (err) {
+              console.error(`Failed to fetch containers for agent ${a.id}`, err);
+              return empty;
+            }
+          })
+        );
 
-            // Arrange containers in a semi-circular arc below the agent node
-            const containerCount = containers.length;
-            const spacing = 220;
-            const rowSize = Math.min(containerCount, 4); // max 4 per row
-            const rows = Math.ceil(containerCount / rowSize);
+        // ── Pass 2: calculate default X positions from cumulative fan widths ──
+        // Each agent "owns" a horizontal band wide enough for its container row.
+        // Agents that already have a saved position are placed there directly and
+        // do NOT consume space in the auto-layout cursor.
+        const CONTAINER_SPACING = 220; // px between container node centres
+        const FAN_MARGIN = 100;        // gap between adjacent agent fans
 
-            containers.forEach((c: any, cIdx: number) => {
-              const row = Math.floor(cIdx / rowSize);
-              const col = cIdx % rowSize;
-              const rowItemCount = Math.min(rowSize, containerCount - row * rowSize);
-              const rowOffset = (rowItemCount - 1) * spacing / 2;
+        let cursorX = 150;
+        const agentDefaultPositions = new Map<number, { x: number; y: number }>();
 
-              const containerId = `container-${a.id}-${cIdx}`;
-              const containerName = (c.name || c.id || 'container').replace(/^\//, '');
+        for (const { agent: a, containers } of agentContainerData) {
+          if (a.positionX != null) continue; // saved position – skip cursor
+          const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
+          const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
+          // Center the 240px agent card (120 offset) over the middle of the fan
+          agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 120, y: 600 });
+          cursorX += fanWidth + FAN_MARGIN;
+        }
 
-              initialNodes.push({
-                id: containerId,
-                type: 'container',
-                position: {
-                  x: baseX + (col * spacing) - rowOffset,
-                  y: baseY + 200 + (row * 160)
-                },
-                data: {
-                  label: containerName,
-                  image: c.image || 'unknown',
-                  state: c.state || 'unknown',
-                  statusText: c.status || c.state || 'unknown'
-                }
-              });
+        // ── Pass 3: build agent + container nodes with correct positions ──────
+        for (const { agent: a, containers, hostMetrics } of agentContainerData) {
+          const agentNodeId = `agent-${a.id}`;
+          const pos = a.positionX != null
+            ? { x: a.positionX, y: a.positionY ?? 600 }
+            : (agentDefaultPositions.get(a.id) ?? { x: cursorX, y: 600 });
 
-              initialEdges.push({
-                id: `e-${agentNodeId}-${containerId}`,
-                source: agentNodeId,
-                target: containerId,
-                animated: c.state === 'running',
-                style: {
-                  stroke: c.state === 'running' ? '#06b6d4' : '#525252',
-                  strokeWidth: 1.5,
-                  strokeDasharray: c.state === 'running' ? undefined : '5,5',
-                  opacity: c.state === 'running' ? 0.8 : 0.4
-                }
-              });
+          initialNodes.push({
+            id: agentNodeId,
+            type: 'vm',
+            position: pos,
+            data: {
+              label: a.name,
+              rawAgent: a,
+              memUsed:   hostMetrics?.memoryUsedMB  ?? null,
+              memTotal:  hostMetrics?.memoryTotalMB ?? null,
+              diskUsed:  hostMetrics?.diskUsedGB    ?? null,
+              diskTotal: hostMetrics?.diskTotalGB   ?? null,
+            }
+          });
+          initialEdges.push({
+            id: `e-router-${agentNodeId}`,
+            source: 'router',
+            target: agentNodeId,
+            animated: true,
+            style: { stroke: '#6366f1', strokeWidth: 2 }
+          });
+
+          const containerCount = containers.length;
+          if (containerCount === 0) continue;
+
+          const rowSize = Math.min(containerCount, 4);
+
+          containers.forEach((c: any, cIdx: number) => {
+            const row = Math.floor(cIdx / rowSize);
+            const col = cIdx % rowSize;
+            const rowItemCount = Math.min(rowSize, containerCount - row * rowSize);
+            const rowOffset = (rowItemCount - 1) * CONTAINER_SPACING / 2;
+
+            const containerId = `container-${a.id}-${cIdx}`;
+            const containerName = (c.name || c.id || 'container').replace(/^\//, '');
+
+            initialNodes.push({
+              id: containerId,
+              type: 'container',
+              position: {
+                // +120 centres the fan under the 240px-wide agent card
+                x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
+                y: pos.y + 200 + (row * 160)
+              },
+              data: {
+                label: containerName,
+                image: c.image || 'unknown',
+                state: c.state || 'unknown',
+                statusText: c.status || c.state || 'unknown'
+              }
             });
-          } catch (err) {
-            console.error(`Failed to fetch containers for agent ${a.id}`, err);
-          }
-        });
 
-        await Promise.all(containerFetches);
+            initialEdges.push({
+              id: `e-${agentNodeId}-${containerId}`,
+              source: agentNodeId,
+              target: containerId,
+              animated: c.state === 'running',
+              style: {
+                stroke: c.state === 'running' ? '#06b6d4' : '#525252',
+                strokeWidth: 1.5,
+                strokeDasharray: c.state === 'running' ? undefined : '5,5',
+                opacity: c.state === 'running' ? 0.8 : 0.4
+              }
+            });
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to load topology", err);
@@ -258,6 +332,7 @@ function InnerGraph() {
   useEffect(() => {
     loadGraph();
   }, [loadGraph]);
+
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
@@ -377,9 +452,11 @@ function InnerGraph() {
           onConnect={onConnect}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={handleNodeDoubleClick}
+          onMoveEnd={onMoveEnd}
           nodeTypes={nodeTypes}
           colorMode="dark"
-          fitView
+          defaultViewport={savedViewport ?? { x: 0, y: 0, zoom: 0.75 }}
+          fitView={savedViewport === null}
           minZoom={0.1}
           maxZoom={4}
           className="bg-neutral-950 flex-1 w-full relative z-0"

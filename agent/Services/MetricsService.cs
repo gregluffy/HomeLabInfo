@@ -47,7 +47,9 @@ public class MetricsService
                         ulong idleDelta = idleTime - _prevIdleTime;
                         _prevTotalTime = totalTime;
                         _prevIdleTime = idleTime;
-                        return 100.0 * (1.0 - ((double)idleDelta / totalDelta));
+                        if (totalDelta == 0) return 0; // Readings too close together — avoid divide-by-zero (NaN/Infinity)
+                        double raw = 100.0 * (1.0 - ((double)idleDelta / totalDelta));
+                        return Math.Clamp(raw, 0.0, 100.0); // Guard against any remaining edge cases
                     }
                     else
                     {

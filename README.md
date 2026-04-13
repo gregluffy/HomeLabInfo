@@ -87,7 +87,19 @@ Use this on any machine or VM you want to monitor.
 
 Contributions are welcome! As this project is licensed under the GNU GPLv3, any modifications or improvements you contribute must also be released under the same license, ensuring the project remains free and open-source for everyone.
 
+## Security & Disclaimer
+
+> [!CAUTION]
+> **HomeLabInfo is designed for use on trusted local networks only.** 
+>
+> Because this application requires `network_mode: host` to perform network scanning, it has direct access to the host's networking stack. This significantly reduces the isolation typically provided by Docker.
+> 
+> *   **Do NOT expose this application directly to the internet.**
+> *   If you need remote access, use a secure VPN (like WireGuard or Tailscale).
+> *   The author provides this software "as is" without any warranties. Users assume all responsibility for any security risks or network issues that may arise from using this tool in their environment.
+
 ## License
 
 This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](LICENSE) file for the full text.
+
 
