@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -20,7 +20,8 @@ import {
   ReactFlowProvider,
   useReactFlow,
   getNodesBounds,
-  getViewportForBounds
+  getViewportForBounds,
+  Viewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Server, Router, Download, X, Save, Trash2, Box } from 'lucide-react';
@@ -113,6 +114,19 @@ function InnerGraph() {
   const flowRef = useRef<HTMLDivElement>(null);
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
+  // Restore saved viewport (zoom + pan) from localStorage
+  const savedViewport = useMemo<Viewport | null>(() => {
+    try {
+      const raw = localStorage.getItem('topology-viewport');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }, []);
+
+  // Persist viewport changes (pan + zoom) to localStorage
+  const onMoveEnd = useCallback((_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
+    localStorage.setItem('topology-viewport', JSON.stringify(viewport));
+  }, []);
+
   const loadGraph = useCallback(async () => {
     const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
@@ -161,7 +175,7 @@ function InnerGraph() {
           initialNodes.push({
             id,
             type: 'vm',
-            position: { x: a.positionX ?? (200 + (index * 250)), y: a.positionY ?? 600 },
+            position: { x: a.positionX ?? (200 + (index * 350)), y: a.positionY ?? 600 },
             data: { label: a.name, rawAgent: a }
           });
           initialEdges.push({ id: `e-router-${id}`, source: 'router', target: id, animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
@@ -216,7 +230,8 @@ function InnerGraph() {
                 id: containerId,
                 type: 'container',
                 position: {
-                  x: baseX + (col * spacing) - rowOffset,
+                  // +110 centres the fan under the 220px-wide agent card
+                  x: baseX + 110 + (col * spacing) - rowOffset,
                   y: baseY + 200 + (row * 160)
                 },
                 data: {
@@ -377,9 +392,11 @@ function InnerGraph() {
           onConnect={onConnect}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={handleNodeDoubleClick}
+          onMoveEnd={onMoveEnd}
           nodeTypes={nodeTypes}
           colorMode="dark"
-          fitView
+          defaultViewport={savedViewport ?? { x: 0, y: 0, zoom: 0.75 }}
+          fitView={savedViewport === null}
           minZoom={0.1}
           maxZoom={4}
           className="bg-neutral-950 flex-1 w-full relative z-0"

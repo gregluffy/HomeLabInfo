@@ -23,7 +23,7 @@ public class AgentsController : ControllerBase
     public async Task<IActionResult> GetAgents()
     {
         var agents = await _context.VmAgents
-            .Select(a => new { a.Id, a.Name, a.EndpointUrl, a.CreatedAt })
+            .Select(a => new { a.Id, a.Name, a.EndpointUrl, a.CreatedAt, a.PositionX, a.PositionY })
             .ToListAsync();
         return Ok(agents);
     }
