@@ -211,7 +211,13 @@ function InnerGraph() {
               let statsData: any;
               try { statsData = await statsRes.json(); } catch { return empty; }
 
-              const hostMetrics = statsData?.host ?? null;
+              const host = statsData?.host ?? statsData?.Host ?? null;
+              const hostMetrics = host ? {
+                memoryUsedMB:  host.memoryUsedMB  ?? host.MemoryUsedMB  ?? 0,
+                memoryTotalMB: host.memoryTotalMB ?? host.MemoryTotalMB ?? 0,
+                diskUsedGB:    host.diskUsedGB    ?? host.DiskUsedGB    ?? 0,
+                diskTotalGB:   host.diskTotalGB   ?? host.DiskTotalGB   ?? 0
+              } : null;
               // Containers are only shown when the agent IP matches a scanned device
               const matchingDevice = devices.find((d: any) => d.ipAddress === agentIp);
               const containers = matchingDevice && Array.isArray(statsData?.containers) ? statsData.containers : [];
@@ -237,8 +243,8 @@ function InnerGraph() {
           if (a.positionX != null) continue; // saved position – skip cursor
           const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
           const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
-          // Center the 220px agent card over the middle of the fan
-          agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 110, y: 600 });
+          // Center the 240px agent card (120 offset) over the middle of the fan
+          agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 120, y: 600 });
           cursorX += fanWidth + FAN_MARGIN;
         }
 
@@ -288,8 +294,8 @@ function InnerGraph() {
               id: containerId,
               type: 'container',
               position: {
-                // +110 centres the fan under the 220px-wide agent card
-                x: pos.x + 110 + (col * CONTAINER_SPACING) - rowOffset,
+                // +120 centres the fan under the 240px-wide agent card
+                x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
                 y: pos.y + 200 + (row * 160)
               },
               data: {
