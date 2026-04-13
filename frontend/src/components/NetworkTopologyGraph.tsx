@@ -155,6 +155,7 @@ function InnerGraph() {
          try { agents = await agentsRes.json(); } catch(e) { console.error("Agent JSON error", e); }
       }
 
+      // Add device nodes
       if (Array.isArray(devices)) {
         devices.forEach((d: any, index: number) => {
           if (d.ipAddress === "192.168.1.1") return; 
@@ -170,97 +171,115 @@ function InnerGraph() {
       }
 
       if (Array.isArray(agents)) {
-        agents.forEach((a: any, index: number) => {
-          const id = `agent-${a.id}`;
+        // ── Pass 1: fetch every agent's containers in parallel ────────────────
+        const agentContainerData = await Promise.all(
+          agents.map(async (a: any) => {
+            try {
+              let agentIp: string | null = null;
+              try { const url = new URL(a.endpointUrl); agentIp = url.hostname; } catch { return { agent: a, containers: [] }; }
+
+              const matchingDevice = devices.find((d: any) => d.ipAddress === agentIp);
+              if (!matchingDevice) return { agent: a, containers: [] };
+
+              const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${a.id}/stats`).catch(() => null);
+              if (!statsRes || !statsRes.ok) return { agent: a, containers: [] };
+
+              let statsData: any;
+              try { statsData = await statsRes.json(); } catch { return { agent: a, containers: [] }; }
+
+              const containers = statsData?.containers;
+              return { agent: a, containers: Array.isArray(containers) ? containers : [] };
+            } catch (err) {
+              console.error(`Failed to fetch containers for agent ${a.id}`, err);
+              return { agent: a, containers: [] };
+            }
+          })
+        );
+
+        // ── Pass 2: calculate default X positions from cumulative fan widths ──
+        // Each agent "owns" a horizontal band wide enough for its container row.
+        // Agents that already have a saved position are placed there directly and
+        // do NOT consume space in the auto-layout cursor.
+        const CONTAINER_SPACING = 220; // px between container node centres
+        const FAN_MARGIN = 100;        // gap between adjacent agent fans
+
+        let cursorX = 150;
+        const agentDefaultPositions = new Map<number, { x: number; y: number }>();
+
+        for (const { agent: a, containers } of agentContainerData) {
+          if (a.positionX != null) continue; // saved position – skip cursor
+          const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
+          const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
+          // Center the 220px agent card over the middle of the fan
+          agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 110, y: 600 });
+          cursorX += fanWidth + FAN_MARGIN;
+        }
+
+        // ── Pass 3: build agent + container nodes with correct positions ──────
+        for (const { agent: a, containers } of agentContainerData) {
+          const agentNodeId = `agent-${a.id}`;
+          const pos = a.positionX != null
+            ? { x: a.positionX, y: a.positionY ?? 600 }
+            : (agentDefaultPositions.get(a.id) ?? { x: cursorX, y: 600 });
+
           initialNodes.push({
-            id,
+            id: agentNodeId,
             type: 'vm',
-            position: { x: a.positionX ?? (200 + (index * 350)), y: a.positionY ?? 600 },
+            position: pos,
             data: { label: a.name, rawAgent: a }
           });
-          initialEdges.push({ id: `e-router-${id}`, source: 'router', target: id, animated: true, style: { stroke: '#6366f1', strokeWidth: 2 } });
-        });
+          initialEdges.push({
+            id: `e-router-${agentNodeId}`,
+            source: 'router',
+            target: agentNodeId,
+            animated: true,
+            style: { stroke: '#6366f1', strokeWidth: 2 }
+          });
 
-        // For each agent, extract its IP from endpointUrl and check if it matches a device
-        // If matched, fetch containers and add them as child nodes
-        const containerFetches = agents.map(async (a: any) => {
-          try {
-            // Extract IP from endpoint URL (e.g. "http://192.168.1.50:8080" -> "192.168.1.50")
-            let agentIp: string | null = null;
-            try {
-              const url = new URL(a.endpointUrl);
-              agentIp = url.hostname;
-            } catch { return; }
+          const containerCount = containers.length;
+          if (containerCount === 0) continue;
 
-            // Check if this IP exists in our scanned devices
-            const matchingDevice = devices.find((d: any) => d.ipAddress === agentIp);
-            if (!matchingDevice) return;
+          const rowSize = Math.min(containerCount, 4);
 
-            // Agent IP matches a network device — fetch its containers
-            const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${a.id}/stats`).catch(() => null);
-            if (!statsRes || !statsRes.ok) return;
-            
-            let statsData: any;
-            try { statsData = await statsRes.json(); } catch { return; }
-            
-            const containers = statsData?.containers;
-            if (!Array.isArray(containers) || containers.length === 0) return;
+          containers.forEach((c: any, cIdx: number) => {
+            const row = Math.floor(cIdx / rowSize);
+            const col = cIdx % rowSize;
+            const rowItemCount = Math.min(rowSize, containerCount - row * rowSize);
+            const rowOffset = (rowItemCount - 1) * CONTAINER_SPACING / 2;
 
-            const agentNodeId = `agent-${a.id}`;
-            const agentNode = initialNodes.find(n => n.id === agentNodeId);
-            const baseX = agentNode?.position.x ?? (200 + agents.indexOf(a) * 250);
-            const baseY = agentNode?.position.y ?? 600;
+            const containerId = `container-${a.id}-${cIdx}`;
+            const containerName = (c.name || c.id || 'container').replace(/^\//, '');
 
-            // Arrange containers in a semi-circular arc below the agent node
-            const containerCount = containers.length;
-            const spacing = 220;
-            const rowSize = Math.min(containerCount, 4); // max 4 per row
-            const rows = Math.ceil(containerCount / rowSize);
-
-            containers.forEach((c: any, cIdx: number) => {
-              const row = Math.floor(cIdx / rowSize);
-              const col = cIdx % rowSize;
-              const rowItemCount = Math.min(rowSize, containerCount - row * rowSize);
-              const rowOffset = (rowItemCount - 1) * spacing / 2;
-
-              const containerId = `container-${a.id}-${cIdx}`;
-              const containerName = (c.name || c.id || 'container').replace(/^\//, '');
-
-              initialNodes.push({
-                id: containerId,
-                type: 'container',
-                position: {
-                  // +110 centres the fan under the 220px-wide agent card
-                  x: baseX + 110 + (col * spacing) - rowOffset,
-                  y: baseY + 200 + (row * 160)
-                },
-                data: {
-                  label: containerName,
-                  image: c.image || 'unknown',
-                  state: c.state || 'unknown',
-                  statusText: c.status || c.state || 'unknown'
-                }
-              });
-
-              initialEdges.push({
-                id: `e-${agentNodeId}-${containerId}`,
-                source: agentNodeId,
-                target: containerId,
-                animated: c.state === 'running',
-                style: {
-                  stroke: c.state === 'running' ? '#06b6d4' : '#525252',
-                  strokeWidth: 1.5,
-                  strokeDasharray: c.state === 'running' ? undefined : '5,5',
-                  opacity: c.state === 'running' ? 0.8 : 0.4
-                }
-              });
+            initialNodes.push({
+              id: containerId,
+              type: 'container',
+              position: {
+                // +110 centres the fan under the 220px-wide agent card
+                x: pos.x + 110 + (col * CONTAINER_SPACING) - rowOffset,
+                y: pos.y + 200 + (row * 160)
+              },
+              data: {
+                label: containerName,
+                image: c.image || 'unknown',
+                state: c.state || 'unknown',
+                statusText: c.status || c.state || 'unknown'
+              }
             });
-          } catch (err) {
-            console.error(`Failed to fetch containers for agent ${a.id}`, err);
-          }
-        });
 
-        await Promise.all(containerFetches);
+            initialEdges.push({
+              id: `e-${agentNodeId}-${containerId}`,
+              source: agentNodeId,
+              target: containerId,
+              animated: c.state === 'running',
+              style: {
+                stroke: c.state === 'running' ? '#06b6d4' : '#525252',
+                strokeWidth: 1.5,
+                strokeDasharray: c.state === 'running' ? undefined : '5,5',
+                opacity: c.state === 'running' ? 0.8 : 0.4
+              }
+            });
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to load topology", err);
@@ -273,6 +292,7 @@ function InnerGraph() {
   useEffect(() => {
     loadGraph();
   }, [loadGraph]);
+
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
