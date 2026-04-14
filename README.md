@@ -87,6 +87,16 @@ Use this on any machine or VM you want to monitor.
 
 Contributions are welcome! As this project is licensed under the GNU GPLv3, any modifications or improvements you contribute must also be released under the same license, ensuring the project remains free and open-source for everyone.
 
+## Community & Feedback
+
+HomeLabInfo is built for the community. If you have suggestions, feature requests, or find a bug, please:
+
+- **Open an Issue**: Use the [GitHub Issues](https://github.com/gregluffy/HomeLabInfo/issues) to report problems.
+- **Start a Discussion**: Share your setup or ideas in the [Discussions](https://github.com/gregluffy/HomeLabInfo/discussions) tab.
+- **Contribute**: Pull requests are welcome! See the [Contributing](#contributing) section for more details.
+
+---
+
 ## Security & Disclaimer
 
 > [!CAUTION]

@@ -30,7 +30,7 @@ docker build -t gfountopoulos/homelabinfo:1.0.0.2 -t gfountopoulos/homelabinfo:l
 
 **Multi-Platform Build (AMD64 + ARM64):**
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t gfountopoulos/homelabinfo:1.0.0.2 -t gfountopoulos/homelabinfo:latest -f Dockerfile --push .
+docker buildx build --platform linux/amd64,linux/arm64 -t gfountopoulos/homelabinfo:1.0.0.4 -t gfountopoulos/homelabinfo:latest -f Dockerfile --push .
 ```
 
 ---
@@ -45,7 +45,7 @@ docker build -t gfountopoulos/homelabinfo-agent:1.0.0.2 -t gfountopoulos/homelab
 
 **Multi-Platform Build (AMD64 + ARM64):**
 ```bash
-docker buildx build --platform linux/amd64,linux/arm64 -t gfountopoulos/homelabinfo-agent:1.0.0.2 -t gfountopoulos/homelabinfo-agent:latest -f agent/Dockerfile --push agent/
+docker buildx build --platform linux/amd64,linux/arm64 -t gfountopoulos/homelabinfo-agent:1.0.0.4 -t gfountopoulos/homelabinfo-agent:latest -f agent/Dockerfile --push agent/
 ```
 
 ---

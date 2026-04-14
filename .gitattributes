@@ -1,0 +1,10 @@
+# Set default behavior to handle line endings automatically.
+* text=auto
+
+# Force bash scripts to always use LF, even on Windows.
+*.sh text eol=lf
+
+# Force standard text files to use LF to avoid Docker issues in mixed environments.
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+docker-compose.yml text eol=lf
