@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import DeviceCard from "../../components/DeviceCard";
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
 
 interface NetworkDevice {
   id: number;
@@ -70,6 +71,16 @@ export default function NetworkDetails() {
     }
   };
 
+  const handleClear = async () => {
+    if (!confirm("Are you sure you want to clear all network device records? This cannot be undone.")) return;
+    try {
+      await fetch(`${apiUrl}/scanner/devices/all`, { method: "DELETE" });
+      setDevices([]);
+    } catch (err) {
+      console.error("Failed to clear devices", err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-purple-500/30">
       <div className="fixed inset-0 z-0 flex justify-center pointer-events-none opacity-20">
@@ -125,6 +136,15 @@ export default function NetworkDetails() {
                   <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-neutral-900"></div>
                 </div>
               </div>
+
+              <button 
+                onClick={handleClear}
+                disabled={isScanning}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-semibold p-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                title="Clear All Devices"
+              >
+                <Trash2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+              </button>
 
               <button 
                 onClick={handleScan}
