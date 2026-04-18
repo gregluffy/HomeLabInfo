@@ -116,4 +116,4 @@ public class AgentsController : ControllerBase
 }
 
 public record RegisterAgentDto(string Name, string EndpointUrl);
-public record UpdateAgentDto(string? Name, string? EndpointUrl, float? PositionX, float? PositionY);
+public record UpdateAgentDto(string? Name = null, string? EndpointUrl = null, float? PositionX = null, float? PositionY = null);

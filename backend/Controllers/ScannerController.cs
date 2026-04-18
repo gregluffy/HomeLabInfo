@@ -91,4 +91,4 @@ public class ScannerController : ControllerBase
     }
 }
 
-public record UpdateDeviceDto(string? HostName, float? PositionX, float? PositionY);
+public record UpdateDeviceDto(string? HostName = null, float? PositionX = null, float? PositionY = null);
