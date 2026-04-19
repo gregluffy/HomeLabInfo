@@ -18,12 +18,11 @@ Discovering and managing your devices is easier than ever with our interactive t
 
 ### Key Features
 
-*   **Instant DHCP Discovery**: Rapidly discover and identify devices the moment they connect and request an IP address, ensuring your device list is always up-to-date.
+*   **Instant DHCP Discovery**: Rapidly discover and identify devices the moment they connect and request an IP address, Sending an Webhook to inform you for the new connected client on your network and ensuring your device list is always up-to-date.
 *   **Intelligent Network Mapping**: Continuously scan and track your homelab infrastructure online and offline statuses.
 *   **Interactive Topology**: View and arrange a visual map of your network structure.
 *   **Container Management**: Manage and monitor your Docker containers across different agents from one central UI.
 
-**Instant DHCP Discovery Settings**
 ![Instant DHCP Discovery](assets/dhcp-discovery-settings.png)
 
 
