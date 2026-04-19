@@ -15,6 +15,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<NetworkScannerService>();
 builder.Services.AddSingleton<CryptographyService>();
+builder.Services.AddSingleton<WebhookNotificationService>();
+builder.Services.AddHostedService<DhcpListenerService>();
+builder.Services.AddHttpClient();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll",

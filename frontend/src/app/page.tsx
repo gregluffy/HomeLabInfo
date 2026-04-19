@@ -1,10 +1,14 @@
+"use client";
 import NetworkSummaryCard from "../components/NetworkSummaryCard";
 import AppsSummaryCard from "../components/AppsSummaryCard";
-
 import Link from 'next/link';
-import { Network } from 'lucide-react';
+import { Network, Settings } from 'lucide-react';
+import { useState } from 'react';
+import SettingsModal from "../components/SettingsModal";
 
 export default function Dashboard() {
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-purple-500/30">
       
@@ -27,10 +31,24 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <Link href="/topology" className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-white font-semibold transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2">
-             <Network className="w-5 h-5"/> View Interactive Topology
-          </Link>
+          <div className="flex items-center gap-4 flex-wrap">
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="bg-neutral-800 hover:bg-neutral-700 border border-white/10 px-5 py-3 rounded-xl text-white font-semibold transition-all flex items-center gap-2"
+            >
+              <Settings className="w-5 h-5 text-neutral-400" /> Settings
+            </button>
+            <Link href="/topology" className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-white font-semibold transition-colors shadow-lg shadow-indigo-900/20 flex items-center gap-2">
+               <Network className="w-5 h-5"/> View Interactive Topology
+            </Link>
+          </div>
         </header>
+
+        {/* Settings Modal */}
+        <SettingsModal 
+          isOpen={isSettingsOpen} 
+          onClose={() => setIsSettingsOpen(false)} 
+        />
 
         {/* Dashboard Grid */}
         <div className="flex flex-col gap-8">

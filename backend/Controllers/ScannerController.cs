@@ -89,6 +89,15 @@ public class ScannerController : ControllerBase
         await _context.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpDelete("devices/all")]
+    public async Task<IActionResult> ClearAllDevices()
+    {
+        var devices = await _context.Devices.ToListAsync();
+        _context.Devices.RemoveRange(devices);
+        await _context.SaveChangesAsync();
+        return NoContent();
+    }
 }
 
-public record UpdateDeviceDto(string? HostName, float? PositionX, float? PositionY);
+public record UpdateDeviceDto(string? HostName = null, float? PositionX = null, float? PositionY = null);
