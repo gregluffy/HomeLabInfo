@@ -33,7 +33,7 @@ As a developer primarily focused on **.NET**, this project is built from the gro
 
 ### Technologies Used
 
-*   **Built with:** .NET 10 (ASP.NET Core), Next.js, Docker.
+* **Built with:** .NET 10 (ASP.NET Core), Next.js, Docker.
 * **Backend**: .NET 10 (ASP.NET Core / Worker Services)
 * **Frontend**: Next.js (Modern Web Dashboard)
 * **Agent System**: .NET 10 (For remote telemetry gathering)
