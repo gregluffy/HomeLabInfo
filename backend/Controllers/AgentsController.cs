@@ -116,4 +116,14 @@ public class AgentsController : ControllerBase
 }
 
 public record RegisterAgentDto(string Name, string EndpointUrl);
-public record UpdateAgentDto(string? Name = null, string? EndpointUrl = null, float? PositionX = null, float? PositionY = null);
+public class UpdateAgentDto
+{
+    [System.Text.Json.Serialization.JsonPropertyName("name")]
+    public string? Name { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("endpointUrl")]
+    public string? EndpointUrl { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("positionX")]
+    public float? PositionX { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("positionY")]
+    public float? PositionY { get; set; }
+}

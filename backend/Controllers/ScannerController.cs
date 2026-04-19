@@ -100,4 +100,12 @@ public class ScannerController : ControllerBase
     }
 }
 
-public record UpdateDeviceDto(string? HostName = null, float? PositionX = null, float? PositionY = null);
+public class UpdateDeviceDto
+{
+    [System.Text.Json.Serialization.JsonPropertyName("hostName")]
+    public string? HostName { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("positionX")]
+    public float? PositionX { get; set; }
+    [System.Text.Json.Serialization.JsonPropertyName("positionY")]
+    public float? PositionY { get; set; }
+}
