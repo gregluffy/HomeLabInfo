@@ -249,6 +249,12 @@ function InnerGraph() {
         }
 
         // ── Pass 3: build agent + container nodes with correct positions ──────
+        // Load any container positions saved in localStorage
+        let savedContainerPositions: Record<string, { x: number; y: number }> = {};
+        try {
+          savedContainerPositions = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
+        } catch { /* ignore */ }
+
         for (const { agent: a, containers, hostMetrics } of agentContainerData) {
           const agentNodeId = `agent-${a.id}`;
           const pos = a.positionX != null
@@ -290,14 +296,17 @@ function InnerGraph() {
             const containerId = `container-${a.id}-${cIdx}`;
             const containerName = (c.name || c.id || 'container').replace(/^\//, '');
 
+            // Use saved position from localStorage if available, otherwise compute default
+            const savedPos = savedContainerPositions[containerId];
+            const defaultPos = {
+              x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
+              y: pos.y + 200 + (row * 160)
+            };
+
             initialNodes.push({
               id: containerId,
               type: 'container',
-              position: {
-                // +120 centres the fan under the 240px-wide agent card
-                x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
-                y: pos.y + 200 + (row * 160)
-              },
+              position: savedPos ?? defaultPos,
               data: {
                 label: containerName,
                 image: c.image || 'unknown',
@@ -353,9 +362,15 @@ function InnerGraph() {
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
          });
+      } else if (node.id.startsWith('container-')) {
+         // Containers have no DB record — persist their position in localStorage.
+         const saved = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
+         saved[node.id] = { x: node.position.x, y: node.position.y };
+         localStorage.setItem('topology-container-positions', JSON.stringify(saved));
       }
     } catch(err) { console.error("Failed to save coordinates: ", err); }
   }, []);
+
 
   // Handle PNG Export
   const downloadGraph = () => {
