@@ -300,7 +300,7 @@ function InnerGraph() {
             const savedPos = savedContainerPositions[containerId];
             const defaultPos = {
               x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
-              y: pos.y + 200 + (row * 160)
+              y: pos.y + 320 + (row * 200)   // 320px gap below agent card, 200px between rows
             };
 
             initialNodes.push({
