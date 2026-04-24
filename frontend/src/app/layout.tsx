@@ -29,8 +29,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0a0a0a] text-white">
-        <main className="flex-grow">
+      <body className="h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
+        <main className="flex-grow flex flex-col min-h-0">
           {children}
         </main>
         <footer className="py-3 px-6 border-t border-white/5 flex justify-between items-center text-[10px] uppercase tracking-wider text-white/30">
