@@ -1,0 +1,53 @@
+# =============================================================================
+# HomeLab Info — GitLab Registry Test Compose
+# =============================================================================
+# Use this file to pull and test the images built by the GitLab CI pipeline
+# BEFORE pushing them to Docker Hub.
+#
+# Usage:
+#   1. Log in to the GitLab registry first:
+#        docker login registry.gitlab.com
+#
+#   2. Set the TAG variable (defaults to "latest"):
+#        TAG=v1.0.0.4 docker compose -f docker-compose.gitlab.yml up -d
+#
+#   3. Once validated, push to Docker Hub via the deploy.ps1 script or manually.
+# =============================================================================
+
+# Replace <namespace> and <project> with your actual GitLab path.
+# Example: registry.gitlab.com/gfountopoulos/homelabinfo/homelabinfo:latest
+
+x-gitlab-registry: &gitlab-registry registry.gitlab.com/<namespace>/<project>
+
+services:
+  homelabinfo:
+    image: "${GITLAB_REGISTRY:-registry.gitlab.com/<namespace>/<project>}/homelabinfo:${TAG:-latest}"
+    container_name: homelabinfo-test
+    restart: unless-stopped
+    environment:
+      # REQUIRED: Set this to your server's IP so the browser can reach the API.
+      - API_URL=http://YOUR_SERVER_IP:9622/api
+      # Optional: change default ports
+      # - BACKEND_PORT=9622
+      # - FRONTEND_PORT=3000
+    volumes:
+      - ./database:/app/backend/Database
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: "host"
+
+  homelab-agent:
+    image: "${GITLAB_REGISTRY:-registry.gitlab.com/<namespace>/<project>}/homelabinfo-agent:${TAG:-latest}"
+    container_name: homelab-agent-test
+    restart: unless-stopped
+    ports:
+      - "9624:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host:ro
+      - /proc:/host/proc:ro
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      # REQUIRED: Paste the public key from your HomeLab Info dashboard
+      - HUB_PUBLIC_KEY=CHANGE_ME
