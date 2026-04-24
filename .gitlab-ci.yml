@@ -19,18 +19,16 @@
 
 variables:
   # -- Image names in the GitLab Container Registry --
-  # They resolve to: registry.gitlab.com/<your-namespace>/<your-project>/homelabinfo:<tag>
+  # They resolve to: registry.gitlab.com/administration7242251/homelabinfo/homelabinfo:<tag>
   APP_IMAGE:   "$CI_REGISTRY_IMAGE/homelabinfo"
   AGENT_IMAGE: "$CI_REGISTRY_IMAGE/homelabinfo-agent"
 
   # Use Docker BuildKit for faster, cache-friendly builds
   DOCKER_BUILDKIT: "1"
 
-  # If your runner uses docker-in-docker (dind) executor, keep this.
-  # If it uses the shell executor with Docker installed natively, remove
-  # the DOCKER_HOST line below.
-  DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: "/certs"
+  # Runner uses Docker socket binding (/var/run/docker.sock mounted).
+  # This tells the Docker CLI inside the job container to use the host daemon.
+  DOCKER_HOST: "unix:///var/run/docker.sock"
 
 # ─── Only run when a tag is pushed ───────────────────────────────────────────
 workflow:
@@ -53,8 +51,9 @@ stages:
 build-app:
   stage: build-app
   image: docker:27
-  services:
-    - docker:27-dind
+  # No dind service — the runner already has /var/run/docker.sock mounted
+  tags:
+    - docker
   <<: *docker_login
   script:
     - echo "Building app image for tag $CI_COMMIT_TAG"
@@ -76,8 +75,9 @@ build-app:
 build-agent:
   stage: build-agent
   image: docker:27
-  services:
-    - docker:27-dind
+  # No dind service — the runner already has /var/run/docker.sock mounted
+  tags:
+    - homelab          # ← replace with YOUR runner tag
   <<: *docker_login
   script:
     - echo "Building agent image for tag $CI_COMMIT_TAG"

@@ -14,22 +14,18 @@
 #   3. Once validated, push to Docker Hub via the deploy.ps1 script or manually.
 # =============================================================================
 
-# Replace <namespace> and <project> with your actual GitLab path.
-# Example: registry.gitlab.com/gfountopoulos/homelabinfo/homelabinfo:latest
-
-x-gitlab-registry: &gitlab-registry registry.gitlab.com/<namespace>/<project>
+x-gitlab-registry: &gitlab-registry registry.gitlab.com/administration7242251/homelabinfo
 
 services:
   homelabinfo:
-    image: "${GITLAB_REGISTRY:-registry.gitlab.com/<namespace>/<project>}/homelabinfo:${TAG:-latest}"
+    image: "${GITLAB_REGISTRY:-registry.gitlab.com/administration7242251/homelabinfo}/homelabinfo:${TAG:-latest}"
     container_name: homelabinfo-test
     restart: unless-stopped
     environment:
-      # REQUIRED: Set this to your server's IP so the browser can reach the API.
-      - API_URL=http://YOUR_SERVER_IP:9622/api
+      - API_URL=http://192.168.2.71:9622/api
       # Optional: change default ports
       # - BACKEND_PORT=9622
-      # - FRONTEND_PORT=3000
+      - FRONTEND_PORT=3000
     volumes:
       - ./database:/app/backend/Database
     cap_add:
@@ -38,7 +34,7 @@ services:
     network_mode: "host"
 
   homelab-agent:
-    image: "${GITLAB_REGISTRY:-registry.gitlab.com/<namespace>/<project>}/homelabinfo-agent:${TAG:-latest}"
+    image: "${GITLAB_REGISTRY:-registry.gitlab.com/administration7242251/homelabinfo}/homelabinfo-agent:${TAG:-latest}"
     container_name: homelab-agent-test
     restart: unless-stopped
     ports:
