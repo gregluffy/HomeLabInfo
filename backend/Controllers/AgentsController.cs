@@ -113,6 +113,29 @@ public class AgentsController : ControllerBase
             return StatusCode(502, new { error = "Failed to communicate with Agent", details = ex.Message });
         }
     }
+
+    [HttpGet("{id}/version")]
+    public async Task<IActionResult> GetAgentVersion(int id)
+    {
+        var agent = await _context.VmAgents.FindAsync(id);
+        if (agent == null) return NotFound("Agent not found");
+
+        using var client = new HttpClient();
+        client.Timeout = TimeSpan.FromSeconds(5);
+
+        try
+        {
+            // /api/version is unauthenticated on the agent — no signed headers needed.
+            var response = await client.GetAsync($"{agent.EndpointUrl}/api/version");
+            response.EnsureSuccessStatusCode();
+            var jsonStr = await response.Content.ReadAsStringAsync();
+            return Content(jsonStr, "application/json");
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(502, new { error = "Failed to retrieve agent version", details = ex.Message });
+        }
+    }
 }
 
 public record RegisterAgentDto(string Name, string EndpointUrl);

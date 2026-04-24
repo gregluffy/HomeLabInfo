@@ -87,4 +87,14 @@ app.MapGet("/api/stats", async ([FromServices] MetricsService metricsService, [F
     return Results.Ok(new AgentPayloadDto(metrics, containers));
 });
 
+// Public endpoint — version is not sensitive, no auth required.
+app.MapGet("/api/version", () =>
+{
+    var version = typeof(Program).Assembly.GetName().Version;
+    var versionString = version is not null
+        ? $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}"
+        : "unknown";
+    return Results.Ok(new { version = versionString });
+});
+
 app.Run();
