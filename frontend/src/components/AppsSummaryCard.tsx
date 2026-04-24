@@ -1,14 +1,62 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Server, Activity, HardDrive, Cpu, Box, Plus, Trash2, Edit2, X } from "lucide-react";
+import { Server, Activity, HardDrive, Cpu, Box, Plus, Trash2, Edit2, X, Tag } from "lucide-react";
 import AddAgentModal from "./AddAgentModal";
+import { semverGt, fetchLatestRelease, GITHUB_REPO_URL } from "../lib/versionUtils";
+
+// ─── Version status helpers ───────────────────────────────────────────────────
+
+type VersionStatus = "up-to-date" | "outdated" | "unknown";
+
+function getVersionStatus(agentVersion: string | null, latestTag: string | null): VersionStatus {
+  if (!agentVersion || !latestTag) return "unknown";
+  return semverGt(latestTag, agentVersion) ? "outdated" : "up-to-date";
+}
+
+function VersionDot({ status }: { status: VersionStatus }) {
+  const colours: Record<VersionStatus, string> = {
+    "up-to-date": "bg-emerald-400 text-emerald-400 shadow-[0_0_6px_currentColor]",
+    "outdated":   "bg-red-500    text-red-500    shadow-[0_0_6px_currentColor]",
+    "unknown":    "bg-neutral-500 text-neutral-500",
+  };
+  return <span className={`w-2 h-2 rounded-full shrink-0 ${colours[status]}`} />;
+}
+
+function VersionBadge({ agentVersion, latestTag }: { agentVersion: string | null; latestTag: string | null }) {
+  const status = getVersionStatus(agentVersion, latestTag);
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] text-neutral-400 font-mono">
+      <VersionDot status={status} />
+      <span>{agentVersion ? `v${agentVersion}` : "—"}</span>
+      {status === "outdated" && latestTag && (
+        <a
+          href={`${GITHUB_REPO_URL}/releases`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-1 px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 transition-colors leading-none"
+          title={`Update available: ${latestTag}`}
+        >
+          {latestTag} available
+        </a>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Card ────────────────────────────────────────────────────────────────
 
 export default function AppsSummaryCard() {
   const [agents, setAgents] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agentToEdit, setAgentToEdit] = useState<any>(null);
   const [refreshInterval, setRefreshInterval] = useState<number | null>(5000);
+  const [latestTag, setLatestTag] = useState<string | null>(null);
+
+  // Fetch the latest GitHub release once for all cards to share
+  useEffect(() => {
+    fetchLatestRelease().then((r) => { if (r) setLatestTag(r.tagName); });
+  }, []);
 
   const loadAgents = () => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`)
@@ -33,7 +81,6 @@ export default function AppsSummaryCard() {
 
   return (
     <div className="bg-white/5 backdrop-blur-lg border border-white/10 p-6 rounded-3xl flex flex-col min-h-[500px] relative group">
-      {/* We removed overflow-hidden to allow children portals if needed, but portal moves it out anyway */}
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent pointer-events-none rounded-3xl mix-blend-overlay"></div>
       
       <div className="flex justify-between items-center mb-6 relative z-10 w-full flex-wrap gap-4">
@@ -78,6 +125,7 @@ export default function AppsSummaryCard() {
                key={agent.id} 
                agent={agent} 
                refreshIntervalMs={refreshInterval}
+               latestTag={latestTag}
                onEdit={() => { setAgentToEdit(agent); setIsModalOpen(true); }} 
                onDelete={() => handleDelete(agent.id)} 
              />
@@ -95,36 +143,54 @@ export default function AppsSummaryCard() {
   );
 }
 
-function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent: any; onEdit: () => void; onDelete: () => void; refreshIntervalMs: number | null }) {
+// ─── VM Agent Card ────────────────────────────────────────────────────────────
+
+function VmAgentDetails({
+  agent,
+  onEdit,
+  onDelete,
+  refreshIntervalMs,
+  latestTag,
+}: {
+  agent: any;
+  onEdit: () => void;
+  onDelete: () => void;
+  refreshIntervalMs: number | null;
+  latestTag: string | null;
+}) {
   const [stats, setStats] = useState<any>(null);
   const [error, setError] = useState<boolean>(false);
   const [showContainers, setShowContainers] = useState(false);
+  const [agentVersion, setAgentVersion] = useState<string | null>(null);
+
+  // Fetch agent version once on mount — it's static, no need to poll
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}/version`)
+      .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
+      .then((data) => setAgentVersion(data.version ?? null))
+      .catch(() => setAgentVersion(null));
+  }, [agent.id]);
 
   useEffect(() => {
     const fetchStats = () => {
       fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}/stats`)
         .then((res) => {
-          if (!res.ok) {
-            throw new Error("Agent unreachable");
-          }
+          if (!res.ok) throw new Error("Agent unreachable");
           return res.json();
         })
-        .then((data) => {
-          setStats(data);
-          setError(false);
-        })
-        .catch((err) => {
-          setError(true);
-        });
+        .then((data) => { setStats(data); setError(false); })
+        .catch(() => setError(true));
     };
 
-    fetchStats(); // Fetch immediately on mount
+    fetchStats();
 
     if (refreshIntervalMs) {
       const id = setInterval(fetchStats, refreshIntervalMs);
       return () => clearInterval(id);
     }
   }, [agent.id, refreshIntervalMs]);
+
+  const versionStatus = getVersionStatus(agentVersion, latestTag);
 
   return (
     <div className="bg-white/5 border border-white/10 p-5 rounded-2xl hover:bg-white/10 transition-colors flex flex-col group/card relative">
@@ -137,10 +203,17 @@ function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent:
          </button>
       </div>
 
-      <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2 pr-16 relative z-10 w-full">
-        <span className="truncate">{agent.name}</span>
-        <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor] shrink-0 ${stats ? 'bg-green-400 text-green-400' : error ? 'bg-red-600 text-red-600' : 'bg-yellow-400 text-yellow-400'}`}></div>
-      </h3>
+      {/* Card header — name + online dot + agent version */}
+      <div className="flex items-start justify-between mb-4 pr-16 relative z-10 w-full">
+        <div className="flex flex-col gap-1 min-w-0">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <span className="truncate">{agent.name}</span>
+            <div className={`w-2.5 h-2.5 rounded-full shadow-[0_0_8px_currentColor] shrink-0 ${stats ? 'bg-green-400 text-green-400' : error ? 'bg-red-600 text-red-600' : 'bg-yellow-400 text-yellow-400'}`}></div>
+          </h3>
+          {/* Agent version + update indicator */}
+          <VersionBadge agentVersion={agentVersion} latestTag={latestTag} />
+        </div>
+      </div>
       
       {error ? (
         <div className="flex flex-col items-center justify-center flex-1 py-4 bg-black/20 rounded-xl border border-red-500/20 text-red-400/80 relative z-10">
@@ -188,7 +261,9 @@ function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent:
             isOpen={showContainers} 
             onClose={() => setShowContainers(false)} 
             agentName={agent.name} 
-            containers={stats.containers || []} 
+            containers={stats.containers || []}
+            agentVersion={agentVersion}
+            latestTag={latestTag}
           />
         </div>
       ) : (
@@ -201,17 +276,57 @@ function VmAgentDetails({ agent, onEdit, onDelete, refreshIntervalMs }: { agent:
   );
 }
 
-function ContainersModal({ isOpen, onClose, agentName, containers }: { isOpen: boolean, onClose: () => void, agentName: string, containers: any[] }) {
-  if (!isOpen || typeof document === 'undefined') return null;
+// ─── Containers Modal ─────────────────────────────────────────────────────────
+
+function ContainersModal({
+  isOpen,
+  onClose,
+  agentName,
+  containers,
+  agentVersion,
+  latestTag,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  agentName: string;
+  containers: any[];
+  agentVersion: string | null;
+  latestTag: string | null;
+}) {
+  if (!isOpen || typeof document === "undefined") return null;
+
+  const versionStatus = getVersionStatus(agentVersion, latestTag);
+
+  const statusLabel: Record<VersionStatus, string> = {
+    "up-to-date": "Agent up to date",
+    "outdated":   "Agent update available",
+    "unknown":    "Agent version unknown",
+  };
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="bg-neutral-900 border border-white/10 rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
         <div className="flex justify-between items-center p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Box className="w-5 h-5 text-indigo-400" /> 
-            Containers on {agentName}
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Box className="w-5 h-5 text-indigo-400" /> 
+              Containers on {agentName}
+            </h2>
+            {/* Agent version badge in modal header */}
+            <div className="flex items-center gap-2">
+              <Tag className="w-3 h-3 text-neutral-500" />
+              <VersionBadge agentVersion={agentVersion} latestTag={latestTag} />
+              {agentVersion && (
+                <span
+                  className="text-[10px] text-neutral-500"
+                  title={statusLabel[versionStatus]}
+                >
+                  {versionStatus === "outdated" ? "— update available" :
+                   versionStatus === "up-to-date" ? "— latest" : ""}
+                </span>
+              )}
+            </div>
+          </div>
           <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="text-neutral-400 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>

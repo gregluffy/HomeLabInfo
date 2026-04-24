@@ -10,7 +10,7 @@ export default function Dashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-purple-500/30">
+    <div className="h-full overflow-y-auto bg-neutral-950 text-white font-sans selection:bg-purple-500/30">
       
       {/* Background Decor */}
       <div className="fixed inset-0 z-0 flex justify-center pointer-events-none opacity-20">
