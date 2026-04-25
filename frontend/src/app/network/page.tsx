@@ -82,7 +82,7 @@ export default function NetworkDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-purple-500/30">
+    <div className="h-full overflow-y-auto bg-neutral-950 text-white font-sans selection:bg-purple-500/30">
       <div className="fixed inset-0 z-0 flex justify-center pointer-events-none opacity-20">
         <div className="w-[1000px] h-[1000px] bg-purple-600 rounded-full blur-[150px] -top-64 -left-32 absolute"></div>
         <div className="w-[800px] h-[800px] bg-blue-600 rounded-full blur-[150px] top-32 right-[-20%] absolute"></div>
@@ -171,7 +171,7 @@ export default function NetworkDetails() {
             <p className="text-neutral-400">Run a scan to discover agents and devices on your network.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 ml:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {devices.map((device, idx) => (
               <DeviceCard key={device.id} device={device} index={idx} />
             ))}
