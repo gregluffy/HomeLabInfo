@@ -93,75 +93,72 @@ export default function NetworkDetails() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             Back to Dashboard
         </Link>
-        <header className="flex flex-col md:flex-row justify-between items-center mb-16 gap-6">
-          <div className="flex items-center gap-6">
-            <img src="/logo.svg" alt="HomeLab Logo" className="w-16 h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)] hidden sm:block" />
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-16 gap-8">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <img src="/logo.svg" alt="HomeLab Logo" className="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)] hidden xs:block" />
             <div>
-              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-2">
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-1 sm:mb-2">
                 Homelab Topology
               </h1>
-              <p className="text-neutral-400 text-lg max-w-xl">
+              <p className="text-neutral-400 text-sm sm:text-lg max-w-xl">
                 Real-time monitoring and discovery of your network infrastructure.
               </p>
             </div>
           </div>
           
-          <div className="flex gap-4 p-2 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl items-center shadow-2xl">
+          <div className="flex flex-wrap gap-4 p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl items-center shadow-2xl w-full lg:w-auto">
               <input 
                 type="text" 
                 value={baseIp} 
                 onChange={(e) => setBaseIp(e.target.value)}
-                className="bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-40 font-mono text-sm"
+                className="bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-neutral-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-full sm:w-40 font-mono text-sm"
                 placeholder="192.168.1."
               />
 
-              {/* Deep Scan Toggle */}
-              <div className="relative group flex items-center gap-2">
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={deepScan}
-                    onChange={(e) => setDeepScan(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
-                </label>
-                <span className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none">Deep Scan</span>
+              <div className="flex items-center gap-4 flex-1 justify-between sm:justify-start">
+                {/* Deep Scan Toggle */}
+                <div className="relative group flex items-center gap-2">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deepScan}
+                      onChange={(e) => setDeepScan(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                  <span className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none">Deep Scan</span>
+                </div>
 
-                {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-72 p-3 bg-neutral-900 border border-white/10 rounded-xl text-xs text-neutral-300 leading-relaxed shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50">
-                  <p className="font-bold text-white mb-1">🔍 Deep Scan</p>
-                  <p>When enabled, the scanner probes open ports (SSH, HTTP) to identify device operating systems and running services.</p>
-                  <p className="mt-2 text-amber-400/90">⚠️ Disable this if your network has strict firewalls or IDS/IPS that may flag port scanning activity.</p>
-                  <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-neutral-900"></div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleClear}
+                    disabled={isScanning}
+                    className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-semibold p-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                    title="Clear All Devices"
+                  >
+                    <Trash2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                  </button>
+
+                  <button 
+                    onClick={handleScan}
+                    disabled={isScanning}
+                    className="relative overflow-hidden group bg-white text-black font-semibold px-6 sm:px-8 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-200 flex-1 sm:flex-none"
+                  >
+                    <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                    {isScanning ? (
+                      <span className="flex items-center gap-2 justify-center">
+                        <svg className="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="hidden sm:inline">Scanning...</span>
+                        <span className="sm:hidden">...</span>
+                      </span>
+                    ) : "Run Scan"}
+                  </button>
                 </div>
               </div>
-
-              <button 
-                onClick={handleClear}
-                disabled={isScanning}
-                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-semibold p-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
-                title="Clear All Devices"
-              >
-                <Trash2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
-              </button>
-
-              <button 
-                onClick={handleScan}
-                disabled={isScanning}
-                className="relative overflow-hidden group bg-white text-black font-semibold px-8 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-200"
-              >
-                <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-                {isScanning ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Scanning...
-                  </span>
-                ) : "Run Scan"}
-              </button>
           </div>
         </header>
 

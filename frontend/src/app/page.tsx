@@ -19,14 +19,14 @@ export default function Dashboard() {
       </div>
       
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        <header className="mb-12 flex justify-between items-end flex-wrap gap-6">
-          <div className="flex items-center gap-6">
-            <img src="/logo.svg" alt="HomeLab Logo" className="w-16 h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)]" />
+        <header className="mb-12 flex justify-between items-center flex-wrap gap-8">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <img src="/logo.svg" alt="HomeLab Logo" className="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)]" />
             <div>
-              <h1 className="text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-2">
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-1 sm:mb-2">
                 Homelab Dashboard
               </h1>
-              <p className="text-neutral-400 text-lg max-w-xl">
+              <p className="text-neutral-400 text-sm sm:text-lg max-w-xl">
                 A high-level overview of your network and container topography.
               </p>
             </div>

@@ -223,18 +223,18 @@ function VmAgentDetails({
         </div>
       ) : stats ? (
         <div className="space-y-5 flex-1 relative z-10">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="flex flex-col items-start bg-black/30 p-3 rounded-xl border border-white/5">
-              <span className="text-[11px] text-neutral-400 mb-1 flex items-center gap-1 uppercase tracking-wider"><Cpu className="w-3 h-3"/> CPU</span>
-              <span className="font-mono text-sm font-semibold text-white/90">{stats.host.cpuPercentage.toFixed(1)}%</span>
+          <div className="grid grid-cols-2 xs:grid-cols-3 gap-2 sm:gap-3">
+            <div className="flex flex-col items-start bg-black/30 p-2 sm:p-3 rounded-xl border border-white/5">
+              <span className="text-[10px] sm:text-[11px] text-neutral-400 mb-1 flex items-center gap-1 uppercase tracking-wider"><Cpu className="w-3 h-3"/> CPU</span>
+              <span className="font-mono text-xs sm:text-sm font-semibold text-white/90">{stats.host.cpuPercentage.toFixed(1)}%</span>
             </div>
-            <div className="flex flex-col items-start bg-black/30 p-3 rounded-xl border border-white/5">
-              <span className="text-[11px] text-neutral-400 mb-1 flex items-center gap-1 uppercase tracking-wider"><Activity className="w-3 h-3"/> RAM</span>
-              <span className="font-mono text-sm font-semibold text-white/90">{(stats.host.memoryUsedMB/1024).toFixed(1)}G</span>
+            <div className="flex flex-col items-start bg-black/30 p-2 sm:p-3 rounded-xl border border-white/5">
+              <span className="text-[10px] sm:text-[11px] text-neutral-400 mb-1 flex items-center gap-1 uppercase tracking-wider"><Activity className="w-3 h-3"/> RAM</span>
+              <span className="font-mono text-xs sm:text-sm font-semibold text-white/90">{(stats.host.memoryUsedMB/1024).toFixed(1)}G</span>
             </div>
-            <div className="flex flex-col items-start bg-black/30 p-3 rounded-xl border border-white/5">
-              <span className="text-[11px] text-neutral-400 mb-1 flex items-center gap-1 uppercase tracking-wider"><HardDrive className="w-3 h-3"/> Disk</span>
-              <span className="font-mono text-sm font-semibold text-white/90">{stats.host.diskUsedGB.toFixed(1)}G</span>
+            <div className="flex flex-col items-start bg-black/30 p-2 sm:p-3 rounded-xl border border-white/5 col-span-2 xs:col-span-1">
+              <span className="text-[10px] sm:text-[11px] text-neutral-400 mb-1 flex items-center gap-1 uppercase tracking-wider"><HardDrive className="w-3 h-3"/> Disk</span>
+              <span className="font-mono text-xs sm:text-sm font-semibold text-white/90">{stats.host.diskUsedGB.toFixed(1)}G</span>
             </div>
           </div>
           <div 
