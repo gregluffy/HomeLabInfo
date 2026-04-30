@@ -28,10 +28,13 @@ services:
       - FRONTEND_PORT=3000
     volumes:
       - ./database:/app/backend/Database
+    network_mode: "host"
+    cap_drop:
+      - ALL
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    network_mode: "host"
+      - NET_BIND_SERVICE
 
   homelab-agent:
     image: "${GITLAB_REGISTRY:-registry.gitlab.com/administration7242251/homelabinfo}/homelabinfo-agent:${TAG:-latest}"
