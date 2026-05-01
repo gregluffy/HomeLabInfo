@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from 'next/link';
+import { Loader2 } from 'lucide-react';
 
 interface NetworkDevice {
   id: number;
@@ -97,8 +98,8 @@ export default function NetworkSummaryCard() {
               type="text" 
               value={baseIp} 
               onChange={(e) => setBaseIp(e.target.value)}
-              className="bg-transparent px-3 py-1 text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-purple-500/50 flex-1 sm:w-28 font-mono text-xs rounded-lg"
-              placeholder="192.168.1."
+              className="bg-transparent px-3 py-1 text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-purple-500/50 flex-1 sm:w-48 font-mono text-xs rounded-lg"
+              placeholder="192.168.1., 192.168.2."
             />
 
             {/* Deep Scan Toggle */}
@@ -118,9 +119,16 @@ export default function NetworkSummaryCard() {
             <button 
               onClick={handleScan}
               disabled={isScanning}
-              className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-all disabled:opacity-50 min-w-[60px]"
+              className="bg-white/10 hover:bg-white/20 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-all disabled:opacity-50 min-w-[80px] flex items-center justify-center gap-2"
             >
-              {isScanning ? "..." : "Scan"}
+              {isScanning ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="hidden xs:inline">Scanning</span>
+                </>
+              ) : (
+                "Scan"
+              )}
             </button>
         </div>
       </div>

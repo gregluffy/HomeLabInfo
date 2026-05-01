@@ -19,16 +19,25 @@ public class NetworkScannerService
         _logger = logger;
     }
 
-    public async Task<List<NetworkDevice>> ScanNetworkAsync(string baseIp, bool doPortScan)
+    public async Task<List<NetworkDevice>> ScanNetworkAsync(List<string> baseIps, bool doPortScan)
     {
         var foundHostsBag = new ConcurrentBag<NetworkDevice>();
         var mdnsTask = DiscoverMdnsHostsAsync();
 
         var scanTasks = new List<Task>();
-        for (int i = 1; i < 255; i++)
+        foreach (var baseIp in baseIps)
         {
-            string ip = $"{baseIp}{i}";
-            scanTasks.Add(Task.Run(() => PingDeviceAsync(ip, foundHostsBag, doPortScan)));
+            var prefix = baseIp.Trim();
+            if (string.IsNullOrWhiteSpace(prefix)) continue;
+            
+            // Ensure prefix ends with a dot
+            if (!prefix.EndsWith(".")) prefix += ".";
+
+            for (int i = 1; i < 255; i++)
+            {
+                string ip = $"{prefix}{i}";
+                scanTasks.Add(Task.Run(() => PingDeviceAsync(ip, foundHostsBag, doPortScan)));
+            }
         }
 
         await Task.WhenAll(scanTasks);

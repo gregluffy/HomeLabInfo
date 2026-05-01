@@ -136,8 +136,13 @@ function InnerGraph() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [editName, setEditName] = useState("");
+  const [editIp, setEditIp] = useState("");
   const flowRef = useRef<HTMLDivElement>(null);
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
+
+  const [routerIp, setRouterIp] = useState("192.168.1.1");
+  const [routerPos, setRouterPos] = useState({ x: 0, y: 100 });
+  const [routerLoaded, setRouterLoaded] = useState(false);
 
   // Restore saved viewport (zoom + pan) from localStorage
   const savedViewport = useMemo<Viewport | null>(() => {
@@ -147,21 +152,60 @@ function InnerGraph() {
     } catch { return null; }
   }, []);
 
+  // Fetch Router IP and Position from settings
+  useEffect(() => {
+    (async () => {
+      try {
+        const [ipRes, xRes, yRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/DefaultRouterIp`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`)
+        ]);
+
+        if (ipRes.ok) {
+          const data = await ipRes.json();
+          if (data.value) setRouterIp(data.value);
+        }
+
+        let posX = window.innerWidth / 2 - 100;
+        let posY = 100;
+
+        if (xRes.ok) {
+          const data = await xRes.json();
+          if (data.value) posX = parseFloat(data.value);
+        }
+        if (yRes.ok) {
+          const data = await yRes.json();
+          if (data.value) posY = parseFloat(data.value);
+        }
+
+        setRouterPos({ x: posX, y: posY });
+        setRouterLoaded(true);
+      } catch (err) { 
+        console.error("Failed to fetch router settings", err); 
+        setRouterLoaded(true); 
+      }
+    })();
+  }, []);
+
   // Persist viewport changes (pan + zoom) to localStorage
   const onMoveEnd = useCallback((_: MouseEvent | TouchEvent | null, viewport: Viewport) => {
     localStorage.setItem('topology-viewport', JSON.stringify(viewport));
   }, []);
 
-  const loadGraph = useCallback(async () => {
+  const loadGraph = useCallback(async (overrideIp?: string) => {
+    if (!routerLoaded) return; // Wait for router settings to prevent glitching
     const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
+    
+    const activeRouterIp = overrideIp || routerIp;
     
     // Base Network Router Node (ALWAYS added)
     initialNodes.push({
       id: 'router',
       type: 'device',
-      position: { x: window.innerWidth / 2 - 100, y: 100 },
-      data: { label: 'Main Router', ip: '192.168.1.1', status: 'Online' }
+      position: routerPos,
+      data: { label: 'Main Router', ip: activeRouterIp, status: 'Online' }
     });
 
     try {
@@ -183,7 +227,7 @@ function InnerGraph() {
       // Add device nodes
       if (Array.isArray(devices)) {
         devices.forEach((d: any, index: number) => {
-          if (d.ipAddress === "192.168.1.1") return; 
+          if (d.ipAddress === activeRouterIp) return; 
           const id = `dev-${d.id}`;
           initialNodes.push({
             id,
@@ -336,7 +380,7 @@ function InnerGraph() {
       setNodes(initialNodes);
       setEdges(initialEdges);
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, routerIp]);
 
   useEffect(() => {
     loadGraph();
@@ -348,7 +392,19 @@ function InnerGraph() {
   // Handle Drag Position Saving
   const onNodeDragStop = useCallback(async (event: any, node: Node) => {
     try {
-      if (node.id.startsWith('dev-')) {
+      if (node.id === 'router') {
+          await Promise.all([
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ value: node.position.x.toString() })
+            }),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ value: node.position.y.toString() })
+            })
+          ]);
+          setRouterPos({ x: node.position.x, y: node.position.y });
+      } else if (node.id.startsWith('dev-')) {
          const devId = node.id.replace('dev-', '');
          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
            method: 'PUT',
@@ -410,22 +466,38 @@ function InnerGraph() {
 
   // Handle Modals 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback((_, node) => {
-    if (node.id === 'router') return; // Cannot edit main router
-    if (node.id.startsWith('container-')) return; // Container nodes are read-only
     setEditingNode(node);
-    setEditName(node.data.label as string);
+    const nodeData = node.data as any;
+    if (node.id === 'router') {
+      setEditName(nodeData.label || 'Main Router');
+      setEditIp(nodeData.ip || '');
+    } else {
+      if (node.id.startsWith('container-')) return; // Container nodes are read-only
+      setEditName(nodeData.label || 'Unknown Device');
+      setEditIp(""); // Not editable for standard devices here
+    }
   }, []);
 
   const saveEdit = async () => {
     if (!editingNode) return;
     try {
-       if (editingNode.id.startsWith('dev-')) {
+       if (editingNode.id === 'router') {
+          // Save Router IP and Name to settings
+          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/DefaultRouterIp`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: editIp })
+          });
+          setRouterIp(editIp);
+          loadGraph(editIp); // Force immediate reload with new IP
+       } else if (editingNode.id.startsWith('dev-')) {
          const devId = editingNode.id.replace('dev-', '');
          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
            method: 'PUT',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ hostName: editName })
          });
+         loadGraph();
        } else if (editingNode.id.startsWith('agent-')) {
          const agentId = editingNode.id.replace('agent-', '');
          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
@@ -433,9 +505,9 @@ function InnerGraph() {
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ name: editName })
          });
+         loadGraph();
        }
        setEditingNode(null);
-       loadGraph(); // Refresh to assert changes
     } catch(e) { console.error(e); }
   }
 
@@ -509,15 +581,29 @@ function InnerGraph() {
               type="text" 
               value={editName} 
               onChange={(e) => setEditName(e.target.value)}
-              className="bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-indigo-500 transition-colors w-full mb-6"
+              className="bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-indigo-500 transition-colors w-full mb-4"
+              disabled={editingNode.id === 'router'} // Router name is currently fixed for simplicity, but IP is editable
             />
+
+            {editingNode.id === 'router' && (
+              <>
+                <label className="text-sm font-semibold text-neutral-300 mb-2">Router IP Address</label>
+                <input 
+                  type="text" 
+                  value={editIp} 
+                  onChange={(e) => setEditIp(e.target.value)}
+                  className="bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white outline-none focus:border-indigo-500 transition-colors w-full mb-6"
+                  placeholder="192.168.1.1"
+                />
+              </>
+            )}
 
             <div className="flex justify-between items-center pt-4 border-t border-white/5">
               <button 
                  onClick={deleteNode} 
-                 className={`flex items-center gap-2 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-3 py-2 rounded-lg font-semibold transition-colors ${editingNode.data.status === 'Online' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                 disabled={editingNode.data.status === 'Online'} // Only offline devices should be deleted safely
-                 title={editingNode.data.status === 'Online' ? "Cannot delete Online entities. They must be offline first." : ""}
+                 className={`flex items-center gap-2 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-3 py-2 rounded-lg font-semibold transition-colors ${(editingNode.id === 'router' || (editingNode.data as any).status === 'Online') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                 disabled={editingNode.id === 'router' || (editingNode.data as any).status === 'Online'} // Only offline devices should be deleted safely
+                 title={editingNode.id === 'router' ? "Cannot delete the main router." : (editingNode.data as any).status === 'Online' ? "Cannot delete Online entities. They must be offline first." : ""}
               >
                  <Trash2 className="w-4 h-4" /> Delete
               </button>
