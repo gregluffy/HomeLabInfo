@@ -22,6 +22,7 @@ Discovering and managing your devices is easier than ever with our interactive t
 *   **Intelligent Network Mapping**: Continuously scan and track your homelab infrastructure online and offline statuses.
 *   **Interactive Topology**: View and arrange a visual map of your network structure.
 *   **Container Management**: Manage and monitor your Docker containers across different agents from one central UI.
+*   **Detailed Documentation**: For full setup and usage instructions, refer to our [User Manual](USER_MANUAL.md).
 
 ![Instant DHCP Discovery](assets/dhcp-discovery-settings.png)
 
