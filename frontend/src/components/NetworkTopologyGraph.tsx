@@ -141,6 +141,7 @@ function InnerGraph() {
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
   const [routerIp, setRouterIp] = useState("192.168.1.1");
+  const [routerPos, setRouterPos] = useState({ x: 0, y: 100 });
   const [routerLoaded, setRouterLoaded] = useState(false);
 
   // Restore saved viewport (zoom + pan) from localStorage
@@ -151,19 +152,38 @@ function InnerGraph() {
     } catch { return null; }
   }, []);
 
-  // Fetch Router IP from settings
+  // Fetch Router IP and Position from settings
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/DefaultRouterIp`);
-        if (res.ok) {
-          const data = await res.json();
+        const [ipRes, xRes, yRes] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/DefaultRouterIp`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`)
+        ]);
+
+        if (ipRes.ok) {
+          const data = await ipRes.json();
           if (data.value) setRouterIp(data.value);
-          setRouterLoaded(true);
         }
+
+        let posX = window.innerWidth / 2 - 100;
+        let posY = 100;
+
+        if (xRes.ok) {
+          const data = await xRes.json();
+          if (data.value) posX = parseFloat(data.value);
+        }
+        if (yRes.ok) {
+          const data = await yRes.json();
+          if (data.value) posY = parseFloat(data.value);
+        }
+
+        setRouterPos({ x: posX, y: posY });
+        setRouterLoaded(true);
       } catch (err) { 
-        console.error("Failed to fetch router IP", err); 
-        setRouterLoaded(true); // Proceed anyway with default
+        console.error("Failed to fetch router settings", err); 
+        setRouterLoaded(true); 
       }
     })();
   }, []);
@@ -184,7 +204,7 @@ function InnerGraph() {
     initialNodes.push({
       id: 'router',
       type: 'device',
-      position: { x: window.innerWidth / 2 - 100, y: 100 },
+      position: routerPos,
       data: { label: 'Main Router', ip: activeRouterIp, status: 'Online' }
     });
 
@@ -372,7 +392,19 @@ function InnerGraph() {
   // Handle Drag Position Saving
   const onNodeDragStop = useCallback(async (event: any, node: Node) => {
     try {
-      if (node.id.startsWith('dev-')) {
+      if (node.id === 'router') {
+          await Promise.all([
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ value: node.position.x.toString() })
+            }),
+            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
+              method: 'PUT', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ value: node.position.y.toString() })
+            })
+          ]);
+          setRouterPos({ x: node.position.x, y: node.position.y });
+      } else if (node.id.startsWith('dev-')) {
          const devId = node.id.replace('dev-', '');
          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
            method: 'PUT',

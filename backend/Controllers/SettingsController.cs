@@ -41,6 +41,22 @@ public class SettingsController : ControllerBase
             setting.Value = dto.Value;
         }
 
+        // Special logic: If setting DefaultRouterIp, ensure it exists in Devices table
+        if (key == "DefaultRouterIp" && !string.IsNullOrWhiteSpace(dto.Value))
+        {
+            var existingDevice = await _context.Devices.FirstOrDefaultAsync(d => d.IPAddress == dto.Value);
+            if (existingDevice == null)
+            {
+                _context.Devices.Add(new NetworkDevice 
+                { 
+                    IPAddress = dto.Value, 
+                    HostName = "Main Router", 
+                    Status = "Online", 
+                    LastSeen = DateTime.UtcNow 
+                });
+            }
+        }
+
         await _context.SaveChangesAsync();
         return Ok(new { setting.Key, setting.Value });
     }
