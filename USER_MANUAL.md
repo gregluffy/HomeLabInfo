@@ -30,15 +30,29 @@ The scanner supports scanning multiple subnets simultaneously.
 
 ---
 
-## 3. Network Topology
+## 3. Instant DHCP Discovery
+HomeLabInfo includes a specialized listener that monitors your network for DHCP requests (the signal sent by a device when it first connects).
+
+### 3.1 Real-Time Discovery
+When a new device joins your network:
+1.  The app captures the DHCP broadcast.
+2.  It immediately identifies the device's MAC address and hostname.
+3.  The device is added to your dashboard instantly, even before a full network scan is performed.
+
+### 3.2 Webhook Notifications
+You can configure a Webhook URL in the settings to receive instant alerts (e.g., via Discord, Slack, or Gotify) whenever a new client is discovered via DHCP. This is perfect for monitoring for unauthorized devices or seeing exactly when your servers reboot.
+
+---
+
+## 4. Network Topology
 The Topology View provides a visual "map" of your home lab.
 
-### 3.1 The Main Router
+### 4.1 The Main Router
 The top-most node represents your network's gateway.
 - **Configuration**: By default, the app assumes `192.168.1.1`. To change this, **double-click** the Router node in the Topology View and enter your actual gateway IP.
 - **Auto-Discovery**: When you set a Router IP, the app ensures that device is tracked in your database so it never disappears from the map.
 
-### 3.2 Interacting with Nodes
+### 4.2 Interacting with Nodes
 - **Dragging**: You can move any node to organize your map. Positions are **saved automatically** to the database.
 - **Double-Click**: 
     - **Devices/Agents**: Rename the device or change its display icon.
@@ -48,20 +62,20 @@ The top-most node represents your network's gateway.
     - **Rose Lines/Dashed**: Offline or disconnected devices.
     - **Animations**: Active data flow (animated edges).
 
-### 3.3 Exporting
+### 4.3 Exporting
 Click **Export as PNG** in the top-right of the topology view to save a high-resolution snapshot of your network map.
 
 ---
 
-## 4. Agents & Containers
+## 5. Agents & Containers
 To get the most out of HomeLabInfo, you should install the **HomeLabInfo Agent** on your Linux VMs or Servers.
 
-### 4.1 Agent Features
+### 5.1 Agent Features
 - **Host Metrics**: Detailed RAM and Disk usage reporting.
 - **Docker Integration**: The agent automatically discovers running Docker containers and links them to the host VM in the Topology view.
 - **Status Monitoring**: Real-time heartbeat to ensure your servers are healthy.
 
-### 4.2 Topology Representation
+### 5.2 Topology Representation
 When an agent is detected:
 1. The VM appears as a specialized **Agent Node**.
 2. All Docker containers are rendered as child nodes connected to the host VM.
@@ -69,7 +83,7 @@ When an agent is detected:
 
 ---
 
-## 5. Technical Settings
+## 6. Technical Settings
 - **API URL**: Ensure your frontend is pointed to the correct backend API in your `.env` file (`NEXT_PUBLIC_API_URL`).
 - **Persistence**: Most settings (Scan ranges, Router IP, Node positions) are stored in the backend SQL database for cross-device consistency.
 
