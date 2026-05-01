@@ -15,6 +15,7 @@
 * Add and ability to add notes on the Topology view. 
 * Add the ability to group some nodes in topology view. maybe the user would group them like IOT/Servers etc..
 * Also in general think about how to improve the Topology View cause if we have a lot of nodes its kinda messy especially with normal monitors.
+* Since new features and staff are being added i think we need to create an manual for the application.
 
 # Backlog
 * Maybe an login functionality.
