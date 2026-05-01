@@ -29,8 +29,10 @@ public class ScannerController : ControllerBase
     [HttpPost("scan")]
     public async Task<IActionResult> ScanNetwork([FromQuery] string baseIp = "192.168.2.", [FromQuery] bool doPortScan = true)
     {
+        var prefixes = baseIp.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+        
         // For simplicity, we block and scan. In a production scenario, we'd run this via a BackgroundService.
-        var scannedDevices = await _scannerService.ScanNetworkAsync(baseIp, doPortScan);
+        var scannedDevices = await _scannerService.ScanNetworkAsync(prefixes, doPortScan);
 
         // Update DB
         foreach(var device in scannedDevices)
@@ -50,13 +52,20 @@ public class ScannerController : ControllerBase
         }
 
         // Mark previously seen devices that are no longer online as Offline
+        // ONLY if they belong to one of the subnets we just scanned!
         var scannedIPs = scannedDevices.Select(d => d.IPAddress).ToHashSet();
         var allDevices = await _context.Devices.ToListAsync();
+        
         foreach (var dbDevice in allDevices)
         {
             if (!scannedIPs.Contains(dbDevice.IPAddress))
             {
-                dbDevice.Status = "Offline";
+                // Check if this device belongs to one of the prefixes we scanned
+                bool inScannedSubnet = prefixes.Any(p => dbDevice.IPAddress.StartsWith(p));
+                if (inScannedSubnet)
+                {
+                    dbDevice.Status = "Offline";
+                }
             }
         }
 

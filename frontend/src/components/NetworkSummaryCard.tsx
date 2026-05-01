@@ -97,8 +97,8 @@ export default function NetworkSummaryCard() {
               type="text" 
               value={baseIp} 
               onChange={(e) => setBaseIp(e.target.value)}
-              className="bg-transparent px-3 py-1 text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-purple-500/50 flex-1 sm:w-28 font-mono text-xs rounded-lg"
-              placeholder="192.168.1."
+              className="bg-transparent px-3 py-1 text-white placeholder-neutral-500 focus:outline-none focus:ring-1 focus:ring-purple-500/50 flex-1 sm:w-48 font-mono text-xs rounded-lg"
+              placeholder="192.168.1., 192.168.2."
             />
 
             {/* Deep Scan Toggle */}
