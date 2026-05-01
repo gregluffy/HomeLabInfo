@@ -141,6 +141,7 @@ function InnerGraph() {
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
   const [routerIp, setRouterIp] = useState("192.168.1.1");
+  const [routerLoaded, setRouterLoaded] = useState(false);
 
   // Restore saved viewport (zoom + pan) from localStorage
   const savedViewport = useMemo<Viewport | null>(() => {
@@ -158,8 +159,12 @@ function InnerGraph() {
         if (res.ok) {
           const data = await res.json();
           if (data.value) setRouterIp(data.value);
+          setRouterLoaded(true);
         }
-      } catch (err) { console.error("Failed to fetch router IP", err); }
+      } catch (err) { 
+        console.error("Failed to fetch router IP", err); 
+        setRouterLoaded(true); // Proceed anyway with default
+      }
     })();
   }, []);
 
@@ -168,16 +173,19 @@ function InnerGraph() {
     localStorage.setItem('topology-viewport', JSON.stringify(viewport));
   }, []);
 
-  const loadGraph = useCallback(async () => {
+  const loadGraph = useCallback(async (overrideIp?: string) => {
+    if (!routerLoaded) return; // Wait for router settings to prevent glitching
     const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
+    
+    const activeRouterIp = overrideIp || routerIp;
     
     // Base Network Router Node (ALWAYS added)
     initialNodes.push({
       id: 'router',
       type: 'device',
       position: { x: window.innerWidth / 2 - 100, y: 100 },
-      data: { label: 'Main Router', ip: routerIp, status: 'Online' }
+      data: { label: 'Main Router', ip: activeRouterIp, status: 'Online' }
     });
 
     try {
@@ -199,7 +207,7 @@ function InnerGraph() {
       // Add device nodes
       if (Array.isArray(devices)) {
         devices.forEach((d: any, index: number) => {
-          if (d.ipAddress === routerIp) return; 
+          if (d.ipAddress === activeRouterIp) return; 
           const id = `dev-${d.id}`;
           initialNodes.push({
             id,
@@ -449,6 +457,7 @@ function InnerGraph() {
             body: JSON.stringify({ value: editIp })
           });
           setRouterIp(editIp);
+          loadGraph(editIp); // Force immediate reload with new IP
        } else if (editingNode.id.startsWith('dev-')) {
          const devId = editingNode.id.replace('dev-', '');
          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
@@ -456,6 +465,7 @@ function InnerGraph() {
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ hostName: editName })
          });
+         loadGraph();
        } else if (editingNode.id.startsWith('agent-')) {
          const agentId = editingNode.id.replace('agent-', '');
          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
@@ -463,9 +473,9 @@ function InnerGraph() {
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ name: editName })
          });
+         loadGraph();
        }
        setEditingNode(null);
-       loadGraph(); // Refresh to assert changes
     } catch(e) { console.error(e); }
   }
 
