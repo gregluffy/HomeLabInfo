@@ -12,10 +12,10 @@
 * Bug: an user sayd that in his network the app assumed the default router wrong and he cannot change it in topology.
 
 # Todo
+* Add and ability to add notes on the Topology view. 
+* Add the ability to group some nodes in topology view. maybe the user would group them like IOT/Servers etc..
+* Also in general think about how to improve the Topology View cause if we have a lot of nodes its kinda messy especially with normal monitors.
 
 # Backlog
 * Maybe an login functionality.
 * Maybe export the topology as json to give the ability to have the topology as actual data.
-* Add and ability to add notes on the Topology view. 
-* Add the ability to group some nodes in topology view. maybe the user would group them like IOT/Servers etc..
-* Also in general think about how to improve the Topology View cause if we have a lot of nodes its kinda messy especially with normal monitors.
