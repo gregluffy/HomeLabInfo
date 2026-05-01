@@ -427,12 +427,13 @@ function InnerGraph() {
   // Handle Modals 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback((_, node) => {
     setEditingNode(node);
+    const nodeData = node.data as any;
     if (node.id === 'router') {
-      setEditName(node.data.label || 'Main Router');
-      setEditIp(node.data.ip || '');
+      setEditName(nodeData.label || 'Main Router');
+      setEditIp(nodeData.ip || '');
     } else {
       if (node.id.startsWith('container-')) return; // Container nodes are read-only
-      setEditName(node.data.label as string);
+      setEditName(nodeData.label || 'Unknown Device');
       setEditIp(""); // Not editable for standard devices here
     }
   }, []);
@@ -558,9 +559,9 @@ function InnerGraph() {
             <div className="flex justify-between items-center pt-4 border-t border-white/5">
               <button 
                  onClick={deleteNode} 
-                 className={`flex items-center gap-2 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-3 py-2 rounded-lg font-semibold transition-colors ${editingNode.id === 'router' || editingNode.data.status === 'Online' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                 disabled={editingNode.id === 'router' || editingNode.data.status === 'Online'} // Only offline devices should be deleted safely
-                 title={editingNode.id === 'router' ? "Cannot delete the main router." : editingNode.data.status === 'Online' ? "Cannot delete Online entities. They must be offline first." : ""}
+                 className={`flex items-center gap-2 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-3 py-2 rounded-lg font-semibold transition-colors ${(editingNode.id === 'router' || (editingNode.data as any).status === 'Online') ? 'opacity-50 cursor-not-allowed' : ''}`}
+                 disabled={editingNode.id === 'router' || (editingNode.data as any).status === 'Online'} // Only offline devices should be deleted safely
+                 title={editingNode.id === 'router' ? "Cannot delete the main router." : (editingNode.data as any).status === 'Online' ? "Cannot delete Online entities. They must be offline first." : ""}
               >
                  <Trash2 className="w-4 h-4" /> Delete
               </button>
