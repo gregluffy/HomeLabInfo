@@ -369,6 +369,21 @@ function InnerGraph() {
         });
       }
 
+      // ── Track real bottom edge of each subnet's device fan ────────────────
+      // Used by the agent layout below so agents sit below the last device row,
+      // even when devices have stale saved positions from a previous layout.
+      const subnetMaxDeviceY = new Map<string, number>();
+      if (multiSubnet) {
+        for (const n of initialNodes) {
+          if (!n.id.startsWith('dev-')) continue;
+          const d = filteredDevices.find((fd: any) => `dev-${fd.id}` === n.id);
+          if (!d) continue;
+          const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+          const nodeY = n.position.y;
+          subnetMaxDeviceY.set(prefix, Math.max(subnetMaxDeviceY.get(prefix) ?? 0, nodeY));
+        }
+      }
+
       if (Array.isArray(agents)) {
         // ── Pass 1: fetch every agent's containers in parallel ────────────────
         const agentContainerData = await Promise.all(
@@ -407,6 +422,7 @@ function InnerGraph() {
         const CONTAINER_SPACING = 220;
         const FAN_MARGIN        = 100;
         const AGENT_NODE_W      = 240; // width of VM card
+        const DEVICE_NODE_H     = 170; // approximate height of a DeviceNode card
 
         // For each agent, resolve its IP prefix once
         const agentWithPrefix = agentContainerData.map(entry => {
@@ -417,9 +433,6 @@ function InnerGraph() {
         });
 
         // ── Pass 3: compute default positions ─────────────────────────────────
-        // In single-subnet mode: original left→right cursor fan
-        // In multi-subnet mode:  agents are placed in a column BELOW their subnet's
-        //                        device fan, sharing the same horizontal centre.
         const agentDefaultPositions = new Map<number, { x: number; y: number }>();
 
         if (!multiSubnet) {
@@ -433,15 +446,13 @@ function InnerGraph() {
             cursorX += fanWidth + FAN_MARGIN;
           }
         } else {
-          // ── Multi-subnet: stack agents per subnet, below the device rows ──────
-          // Track how many agents have already been placed per prefix so we can
-          // fan them horizontally across the subnet's width.
+          // ── Multi-subnet: place agents below the REAL bottom of their subnet's
+          //    device fan (uses actual node Y, not a formula).
           const agentIndexPerPrefix = new Map<string, number>();
 
           for (const { agent: a, prefix, containers } of agentWithPrefix) {
-            if (a.positionX != null) continue;   // has a saved position already
+            if (a.positionX != null) continue;
             if (!prefix) {
-              // Can't determine subnet — fall back to a safe default below router
               agentDefaultPositions.set(a.id, { x: routerPos.x, y: 900 });
               continue;
             }
@@ -449,18 +460,13 @@ function InnerGraph() {
             const agentIdx = agentIndexPerPrefix.get(prefix) ?? 0;
             agentIndexPerPrefix.set(prefix, agentIdx + 1);
 
-            // How many device rows exist in this subnet?
-            const subnetDeviceCount = subnetMap.get(prefix)?.length ?? 0;
-            const deviceRows = Math.max(1, Math.ceil(subnetDeviceCount / DEV_ROW_SIZE));
+            // Derive Y from the actual bottom of the last device row in this subnet
+            const maxDevY = subnetMaxDeviceY.get(prefix) ?? 510;
+            const agentY  = maxDevY + DEVICE_NODE_H + 80;
 
-            // Y: router(100) → subnet(280) → devices(510) → more rows(+220 each) → agent
-            const agentY = 510 + deviceRows * 220 + 60;
-
-            // X: fan agents across the subnet's width
+            // X: fan agents horizontally, centred over the subnet column
             const subnetCenterX = subnetDefaultCenters.get(prefix) ?? routerPos.x;
             const fanWidth = Math.max(AGENT_NODE_W, Math.min(containers.length, 4) * CONTAINER_SPACING);
-
-            // How many agents total in this prefix (for centering)?
             const totalAgentsInSubnet = agentWithPrefix.filter(e => e.prefix === prefix && e.agent.positionX == null).length;
             const totalFanWidth = totalAgentsInSubnet * (fanWidth + FAN_MARGIN) - FAN_MARGIN;
             const startX = subnetCenterX - totalFanWidth / 2;
