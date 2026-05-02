@@ -670,13 +670,15 @@ function InnerGraph() {
 
   // Handle Modals 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback((_, node) => {
+    // Prevent modal from opening for read-only nodes
+    if (node.id.startsWith('container-') || node.id.startsWith('subnet-')) return;
+    
     setEditingNode(node);
     const nodeData = node.data as any;
     if (node.id === 'router') {
       setEditName(nodeData.label || 'Main Router');
       setEditIp(nodeData.ip || '');
     } else {
-      if (node.id.startsWith('container-')) return; // Container nodes are read-only
       setEditName(nodeData.label || 'Unknown Device');
       setEditIp(""); // Not editable for standard devices here
     }
