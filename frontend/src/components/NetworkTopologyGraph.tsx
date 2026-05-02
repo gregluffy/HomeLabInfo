@@ -542,7 +542,7 @@ function InnerGraph() {
             initialNodes.push({
               id: containerId,
               type: 'container',
-              position: savedPos ?? defaultPos,
+              position: (!multiSubnet && savedPos) ? savedPos : defaultPos,
               data: {
                 label: containerName,
                 image: c.image || 'unknown',
