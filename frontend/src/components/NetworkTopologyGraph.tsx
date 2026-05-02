@@ -481,10 +481,18 @@ function InnerGraph() {
         }
 
         // ── Pass 4: build agent + container nodes ─────────────────────────────
+        // In multi-subnet mode, wipe any stale container positions from localStorage.
+        // Those positions are absolute and become invalid when agents move to new Y.
+        // Single-subnet mode keeps saved positions so user-dragged containers persist.
+        if (multiSubnet) {
+          localStorage.removeItem('topology-container-positions');
+        }
         let savedContainerPositions: Record<string, { x: number; y: number }> = {};
-        try {
-          savedContainerPositions = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
-        } catch { /* ignore */ }
+        if (!multiSubnet) {
+          try {
+            savedContainerPositions = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
+          } catch { /* ignore */ }
+        }
 
         for (const { agent: a, containers, hostMetrics, prefix } of agentWithPrefix) {
           const agentNodeId = `agent-${a.id}`;
@@ -542,7 +550,7 @@ function InnerGraph() {
             initialNodes.push({
               id: containerId,
               type: 'container',
-              position: (!multiSubnet && savedPos) ? savedPos : defaultPos,
+              position: savedPos ?? defaultPos,
               data: {
                 label: containerName,
                 image: c.image || 'unknown',
