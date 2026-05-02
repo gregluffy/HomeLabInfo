@@ -24,7 +24,7 @@ import {
   Viewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Server, Router, Download, X, Save, Trash2, Box, Network, Zap, ZapOff } from 'lucide-react';
+import { Server, Router, Download, X, Save, Trash2, Box, Network } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Custom Node types
@@ -160,7 +160,6 @@ function InnerGraph() {
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [editName, setEditName] = useState("");
   const [editIp, setEditIp] = useState("");
-  const [animationsEnabled, setAnimationsEnabled] = useState(false);
   const flowRef = useRef<HTMLDivElement>(null);
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
@@ -732,17 +731,13 @@ function InnerGraph() {
     } catch(e) { console.error(e); }
   }
 
-  const computedEdges = useMemo(() => {
-    return edges.map(e => ({ ...e, animated: animationsEnabled && Boolean(e.data?.shouldAnimate) }));
-  }, [edges, animationsEnabled]);
-
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }} className="relative">
       {nodes.length > 0 ? (
         <ReactFlow
           ref={flowRef}
           nodes={nodes}
-          edges={computedEdges}
+          edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
@@ -763,14 +758,6 @@ function InnerGraph() {
           <Background variant={BackgroundVariant.Dots} gap={32} size={2} color="#ffffff20" />
           
           <Panel position="top-right" className="!m-6 flex flex-col gap-3 items-end">
-            <button 
-              onClick={() => setAnimationsEnabled(!animationsEnabled)}
-              className={`px-4 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 shadow-lg ${animationsEnabled ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20' : 'bg-neutral-800 hover:bg-neutral-700 border border-white/10'}`}
-              title={animationsEnabled ? "Disable animations to save CPU/GPU" : "Enable animations"}
-            >
-              {animationsEnabled ? <Zap className="w-4 h-4 text-amber-400" /> : <ZapOff className="w-4 h-4 text-neutral-400" />}
-              Animations: {animationsEnabled ? 'ON' : 'OFF'}
-            </button>
             <button 
               onClick={downloadGraph}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/20"
