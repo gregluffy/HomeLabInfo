@@ -76,7 +76,7 @@ function DeviceNode({ data }: { data: any }) {
   const isOffline = data.status === 'Offline';
   
   return (
-    <div className={`bg-neutral-900 border-[3px] p-5 rounded-2xl shadow-lg w-[220px] transition-all hover:scale-105 cursor-pointer 
+    <div className={`bg-neutral-900 border-[3px] p-5 rounded-2xl shadow-lg w-[220px] transition-all hover:ring-2 hover:ring-offset-2 hover:ring-offset-neutral-900 hover:ring-current cursor-pointer 
       ${isOffline ? 'border-dashed border-rose-500/50 opacity-60 grayscale' : 'border-emerald-500/80 shadow-emerald-900/30'}`}>
       <Handle type="target" position={Position.Top} className={`!w-3 !h-3 ${isOffline ? '!bg-rose-500' : '!bg-emerald-500'}`} />
       <div className={`flex items-center gap-3 border-b pb-3 mb-3 ${isOffline ? 'border-rose-500/30' : 'border-emerald-500/30'}`}>
@@ -100,7 +100,7 @@ function ContainerNode({ data }: { data: any }) {
   const isRunning = data.state === 'running';
 
   return (
-    <div className={`bg-neutral-900/90 border-2 p-4 rounded-xl shadow-md w-[190px] transition-all hover:scale-105 cursor-pointer
+    <div className={`bg-neutral-900/90 border-2 p-4 rounded-xl shadow-md w-[190px] transition-all hover:ring-2 hover:ring-offset-2 hover:ring-offset-neutral-900 hover:ring-current cursor-pointer
       ${isRunning ? 'border-cyan-500/70 shadow-cyan-900/20' : 'border-neutral-600/50 opacity-60'}`}>
       <Handle type="target" position={Position.Top} className={`!w-2.5 !h-2.5 ${isRunning ? '!bg-cyan-500' : '!bg-neutral-500'}`} />
       <div className={`flex items-center gap-2.5 border-b pb-2.5 mb-2.5 ${isRunning ? 'border-cyan-500/20' : 'border-neutral-700/30'}`}>
@@ -732,13 +732,17 @@ function InnerGraph() {
     } catch(e) { console.error(e); }
   }
 
+  const computedEdges = useMemo(() => {
+    return edges.map(e => ({ ...e, animated: animationsEnabled && e.data?.shouldAnimate }));
+  }, [edges, animationsEnabled]);
+
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }} className="relative">
       {nodes.length > 0 ? (
         <ReactFlow
           ref={flowRef}
           nodes={nodes}
-          edges={edges.map(e => ({ ...e, animated: animationsEnabled && e.data?.shouldAnimate }))}
+          edges={computedEdges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
