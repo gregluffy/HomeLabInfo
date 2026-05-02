@@ -733,7 +733,7 @@ function InnerGraph() {
   }
 
   const computedEdges = useMemo(() => {
-    return edges.map(e => ({ ...e, animated: animationsEnabled && e.data?.shouldAnimate }));
+    return edges.map(e => ({ ...e, animated: animationsEnabled && Boolean(e.data?.shouldAnimate) }));
   }, [edges, animationsEnabled]);
 
   return (
