@@ -403,44 +403,89 @@ function InnerGraph() {
           })
         );
 
-        // ── Pass 2: calculate default X positions from cumulative fan widths ──
-        // Each agent "owns" a horizontal band wide enough for its container row.
-        // Agents that already have a saved position are placed there directly and
-        // do NOT consume space in the auto-layout cursor.
-        const CONTAINER_SPACING = 220; // px between container node centres
-        const FAN_MARGIN = 100;        // gap between adjacent agent fans
+        // ── Pass 2: resolve agent IPs + group by subnet ───────────────────────
+        const CONTAINER_SPACING = 220;
+        const FAN_MARGIN        = 100;
+        const AGENT_NODE_W      = 240; // width of VM card
 
-        let cursorX = 150;
+        // For each agent, resolve its IP prefix once
+        const agentWithPrefix = agentContainerData.map(entry => {
+          let agentIp: string | null = null;
+          try { const url = new URL(entry.agent.endpointUrl); agentIp = url.hostname; } catch { /* ignore */ }
+          const prefix = agentIp ? agentIp.split('.').slice(0, 3).join('.') : null;
+          return { ...entry, agentIp, prefix };
+        });
+
+        // ── Pass 3: compute default positions ─────────────────────────────────
+        // In single-subnet mode: original left→right cursor fan
+        // In multi-subnet mode:  agents are placed in a column BELOW their subnet's
+        //                        device fan, sharing the same horizontal centre.
         const agentDefaultPositions = new Map<number, { x: number; y: number }>();
 
-        for (const { agent: a, containers } of agentContainerData) {
-          if (a.positionX != null) continue; // saved position – skip cursor
-          const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
-          const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
-          // Center the 240px agent card (120 offset) over the middle of the fan
-          agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 120, y: 600 });
-          cursorX += fanWidth + FAN_MARGIN;
+        if (!multiSubnet) {
+          // ── Single-subnet: original cumulative cursor logic ──────────────────
+          let cursorX = 150;
+          for (const { agent: a, containers } of agentContainerData) {
+            if (a.positionX != null) continue;
+            const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
+            const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
+            agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 120, y: 600 });
+            cursorX += fanWidth + FAN_MARGIN;
+          }
+        } else {
+          // ── Multi-subnet: stack agents per subnet, below the device rows ──────
+          // Track how many agents have already been placed per prefix so we can
+          // fan them horizontally across the subnet's width.
+          const agentIndexPerPrefix = new Map<string, number>();
+
+          for (const { agent: a, prefix, containers } of agentWithPrefix) {
+            if (a.positionX != null) continue;   // has a saved position already
+            if (!prefix) {
+              // Can't determine subnet — fall back to a safe default below router
+              agentDefaultPositions.set(a.id, { x: routerPos.x, y: 900 });
+              continue;
+            }
+
+            const agentIdx = agentIndexPerPrefix.get(prefix) ?? 0;
+            agentIndexPerPrefix.set(prefix, agentIdx + 1);
+
+            // How many device rows exist in this subnet?
+            const subnetDeviceCount = subnetMap.get(prefix)?.length ?? 0;
+            const deviceRows = Math.max(1, Math.ceil(subnetDeviceCount / DEV_ROW_SIZE));
+
+            // Y: router(100) → subnet(280) → devices(510) → more rows(+220 each) → agent
+            const agentY = 510 + deviceRows * 220 + 60;
+
+            // X: fan agents across the subnet's width
+            const subnetCenterX = subnetDefaultCenters.get(prefix) ?? routerPos.x;
+            const fanWidth = Math.max(AGENT_NODE_W, Math.min(containers.length, 4) * CONTAINER_SPACING);
+
+            // How many agents total in this prefix (for centering)?
+            const totalAgentsInSubnet = agentWithPrefix.filter(e => e.prefix === prefix && e.agent.positionX == null).length;
+            const totalFanWidth = totalAgentsInSubnet * (fanWidth + FAN_MARGIN) - FAN_MARGIN;
+            const startX = subnetCenterX - totalFanWidth / 2;
+
+            agentDefaultPositions.set(a.id, {
+              x: startX + agentIdx * (fanWidth + FAN_MARGIN) + fanWidth / 2 - AGENT_NODE_W / 2,
+              y: agentY,
+            });
+          }
         }
 
-        // ── Pass 3: build agent + container nodes with correct positions ──────
-        // Load any container positions saved in localStorage
+        // ── Pass 4: build agent + container nodes ─────────────────────────────
         let savedContainerPositions: Record<string, { x: number; y: number }> = {};
         try {
           savedContainerPositions = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
         } catch { /* ignore */ }
 
-        for (const { agent: a, containers, hostMetrics } of agentContainerData) {
+        for (const { agent: a, containers, hostMetrics, prefix } of agentWithPrefix) {
           const agentNodeId = `agent-${a.id}`;
           const pos = a.positionX != null
             ? { x: a.positionX, y: a.positionY ?? 600 }
-            : (agentDefaultPositions.get(a.id) ?? { x: cursorX, y: 600 });
+            : (agentDefaultPositions.get(a.id) ?? { x: routerPos.x, y: 800 });
 
-          // Determine which subnet this agent belongs to (from its endpoint URL)
-          let agentIpForSubnet: string | null = null;
-          try { const url = new URL(a.endpointUrl); agentIpForSubnet = url.hostname; } catch { /* ignore */ }
-          const agentPrefix = agentIpForSubnet ? agentIpForSubnet.split('.').slice(0, 3).join('.') : null;
-          const agentEdgeSource = (multiSubnet && agentPrefix && subnetMap.has(agentPrefix))
-            ? `subnet-${agentPrefix}`
+          const agentEdgeSource = (multiSubnet && prefix && subnetMap.has(prefix))
+            ? `subnet-${prefix}`
             : 'router';
 
           initialNodes.push({
@@ -478,11 +523,10 @@ function InnerGraph() {
             const containerId = `container-${a.id}-${cIdx}`;
             const containerName = (c.name || c.id || 'container').replace(/^\//, '');
 
-            // Use saved position from localStorage if available, otherwise compute default
             const savedPos = savedContainerPositions[containerId];
             const defaultPos = {
               x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
-              y: pos.y + 320 + (row * 200)   // 320px gap below agent card, 200px between rows
+              y: pos.y + 320 + (row * 200)
             };
 
             initialNodes.push({
