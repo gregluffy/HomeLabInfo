@@ -24,7 +24,7 @@ import {
   Viewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Server, Router, Download, X, Save, Trash2, Box } from 'lucide-react';
+import { Server, Router, Download, X, Save, Trash2, Box, Network } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Custom Node types
@@ -125,10 +125,33 @@ function ContainerNode({ data }: { data: any }) {
   );
 }
 
+function SubnetNode({ data }: { data: any }) {
+  return (
+    <div className="bg-neutral-900 border-[3px] border-violet-500/80 p-4 rounded-2xl shadow-lg shadow-violet-900/30 w-[210px]">
+      <Handle type="target" position={Position.Top} className="!bg-violet-500 !w-3 !h-3" />
+      <div className="flex items-center gap-3 border-b border-violet-500/30 pb-3 mb-3">
+        <div className="p-2 bg-violet-500/20 rounded-lg shrink-0">
+          <Network className="w-5 h-5 text-violet-400" />
+        </div>
+        <div>
+          <h3 className="text-[13px] font-bold text-white truncate">{data.label}</h3>
+          <span className="text-[10px] text-violet-300/70 font-mono">{data.cidr}</span>
+        </div>
+      </div>
+      <div className="flex justify-between items-center text-xs font-mono">
+        <span className="text-neutral-500">DEVICES</span>
+        <span className="text-violet-300 bg-violet-500/10 font-bold px-2 py-0.5 rounded">{data.deviceCount}</span>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!bg-violet-500 !w-3 !h-3" />
+    </div>
+  );
+}
+
 const nodeTypes = {
   vm: VmNode,
   device: DeviceNode,
   container: ContainerNode,
+  subnet: SubnetNode,
 };
 
 function InnerGraph() {
@@ -194,13 +217,12 @@ function InnerGraph() {
   }, []);
 
   const loadGraph = useCallback(async (overrideIp?: string) => {
-    if (!routerLoaded) return; // Wait for router settings to prevent glitching
+    if (!routerLoaded) return;
     const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
-    
+
     const activeRouterIp = overrideIp || routerIp;
-    
-    // Base Network Router Node (ALWAYS added)
+
     initialNodes.push({
       id: 'router',
       type: 'device',
@@ -213,29 +235,103 @@ function InnerGraph() {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices`).catch((e) => { console.error("Device fetch error", e); return null; }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`).catch((e) => { console.error("Agent fetch error", e); return null; })
       ]);
-      
+
       let devices: any[] = [];
       let agents: any[] = [];
-      
+
       if (devicesRes && devicesRes.ok) {
-         try { devices = await devicesRes.json(); } catch(e) { console.error("Device JSON error", e); }
+        try { devices = await devicesRes.json(); } catch(e) { console.error("Device JSON error", e); }
       }
       if (agentsRes && agentsRes.ok) {
-         try { agents = await agentsRes.json(); } catch(e) { console.error("Agent JSON error", e); }
+        try { agents = await agentsRes.json(); } catch(e) { console.error("Agent JSON error", e); }
       }
 
-      // Add device nodes
+      // ── Determine subnets ──────────────────────────────────────────────────
+      const filteredDevices = Array.isArray(devices)
+        ? devices.filter((d: any) => d.ipAddress !== activeRouterIp)
+        : [];
+
+      // Group by first 3 octets: "192.168.1"
+      const subnetMap = new Map<string, any[]>();
+      for (const d of filteredDevices) {
+        const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+        if (!subnetMap.has(prefix)) subnetMap.set(prefix, []);
+        subnetMap.get(prefix)!.push(d);
+      }
+
+      const multiSubnet = subnetMap.size > 1;
+
+      // Load saved subnet positions from localStorage
+      let savedSubnetPositions: Record<string, { x: number; y: number }> = {};
+      try {
+        savedSubnetPositions = JSON.parse(localStorage.getItem('topology-subnet-positions') || '{}');
+      } catch { /* ignore */ }
+
+      // ── Create subnet nodes (only when >1 subnet) ─────────────────────────
+      const subnetPrefixes = [...subnetMap.keys()];
+      if (multiSubnet) {
+        subnetPrefixes.forEach((prefix, si) => {
+          const subnetId = `subnet-${prefix}`;
+          const defaultX = (window.innerWidth / 2 - 100) + (si - (subnetPrefixes.length - 1) / 2) * 340;
+          const pos = savedSubnetPositions[subnetId] ?? { x: defaultX, y: 280 };
+          initialNodes.push({
+            id: subnetId,
+            type: 'subnet',
+            position: pos,
+            data: {
+              label: `${prefix}.0`,
+              cidr: `${prefix}.0/24`,
+              deviceCount: subnetMap.get(prefix)!.length,
+            }
+          });
+          initialEdges.push({
+            id: `e-router-${subnetId}`,
+            source: 'router',
+            target: subnetId,
+            animated: true,
+            style: { stroke: '#8b5cf6', strokeWidth: 2.5 }
+          });
+        });
+      }
+
+      // ── Add device nodes ──────────────────────────────────────────────────
       if (Array.isArray(devices)) {
-        devices.forEach((d: any, index: number) => {
-          if (d.ipAddress === activeRouterIp) return; 
+        filteredDevices.forEach((d: any, index: number) => {
           const id = `dev-${d.id}`;
+          const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+          const subnetId = `subnet-${prefix}`;
+          const subnetDevices = subnetMap.get(prefix) ?? [];
+          const subnetIndex = subnetDevices.findIndex((sd: any) => sd.id === d.id);
+
+          // Default position relative to subnet node (if multiSubnet) or router
+          let defaultX: number;
+          let defaultY: number;
+          if (multiSubnet) {
+            const subnetIdx = subnetPrefixes.indexOf(prefix);
+            const subnetCenterX = (savedSubnetPositions[subnetId]?.x) ??
+              ((window.innerWidth / 2 - 100) + (subnetIdx - (subnetPrefixes.length - 1) / 2) * 340);
+            defaultX = subnetCenterX + (subnetIndex - (subnetDevices.length - 1) / 2) * 250;
+            defaultY = 500;
+          } else {
+            defaultX = 100 + (index * 250);
+            defaultY = 350;
+          }
+
           initialNodes.push({
             id,
             type: 'device',
-            position: { x: d.positionX ?? (100 + (index * 250)), y: d.positionY ?? 350 },
+            position: { x: d.positionX ?? defaultX, y: d.positionY ?? defaultY },
             data: { label: d.hostName || d.macAddress || 'Unknown Device', ip: d.ipAddress, status: d.status, rawDevice: d }
           });
-          initialEdges.push({ id: `e-router-${id}`, source: 'router', target: id, animated: d.status === 'Online', style: { stroke: d.status === 'Online' ? '#10b981' : '#f43f5e', strokeWidth: 2, opacity: d.status === 'Online' ? 1 : 0.4 } });
+
+          const edgeSource = multiSubnet ? subnetId : 'router';
+          initialEdges.push({
+            id: `e-${edgeSource}-${id}`,
+            source: edgeSource,
+            target: id,
+            animated: d.status === 'Online',
+            style: { stroke: d.status === 'Online' ? '#10b981' : '#f43f5e', strokeWidth: 2, opacity: d.status === 'Online' ? 1 : 0.4 }
+          });
         });
       }
 
@@ -305,6 +401,14 @@ function InnerGraph() {
             ? { x: a.positionX, y: a.positionY ?? 600 }
             : (agentDefaultPositions.get(a.id) ?? { x: cursorX, y: 600 });
 
+          // Determine which subnet this agent belongs to (from its endpoint URL)
+          let agentIpForSubnet: string | null = null;
+          try { const url = new URL(a.endpointUrl); agentIpForSubnet = url.hostname; } catch { /* ignore */ }
+          const agentPrefix = agentIpForSubnet ? agentIpForSubnet.split('.').slice(0, 3).join('.') : null;
+          const agentEdgeSource = (multiSubnet && agentPrefix && subnetMap.has(agentPrefix))
+            ? `subnet-${agentPrefix}`
+            : 'router';
+
           initialNodes.push({
             id: agentNodeId,
             type: 'vm',
@@ -319,8 +423,8 @@ function InnerGraph() {
             }
           });
           initialEdges.push({
-            id: `e-router-${agentNodeId}`,
-            source: 'router',
+            id: `e-${agentEdgeSource}-${agentNodeId}`,
+            source: agentEdgeSource,
             target: agentNodeId,
             animated: true,
             style: { stroke: '#6366f1', strokeWidth: 2 }
@@ -380,11 +484,12 @@ function InnerGraph() {
       setNodes(initialNodes);
       setEdges(initialEdges);
     }
-  }, [setNodes, setEdges, routerIp]);
+  }, [setNodes, setEdges, routerIp, routerLoaded, routerPos]);
 
+  // Trigger once routerLoaded flips to true (fixes multi-subnet blank topology)
   useEffect(() => {
-    loadGraph();
-  }, [loadGraph]);
+    if (routerLoaded) loadGraph();
+  }, [routerLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
@@ -393,36 +498,39 @@ function InnerGraph() {
   const onNodeDragStop = useCallback(async (event: any, node: Node) => {
     try {
       if (node.id === 'router') {
-          await Promise.all([
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ value: node.position.x.toString() })
-            }),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ value: node.position.y.toString() })
-            })
-          ]);
-          setRouterPos({ x: node.position.x, y: node.position.y });
+        await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: node.position.x.toString() })
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: node.position.y.toString() })
+          })
+        ]);
+        setRouterPos({ x: node.position.x, y: node.position.y });
+      } else if (node.id.startsWith('subnet-')) {
+        const saved = JSON.parse(localStorage.getItem('topology-subnet-positions') || '{}');
+        saved[node.id] = { x: node.position.x, y: node.position.y };
+        localStorage.setItem('topology-subnet-positions', JSON.stringify(saved));
       } else if (node.id.startsWith('dev-')) {
-         const devId = node.id.replace('dev-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
-           method: 'PUT',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
-         });
+        const devId = node.id.replace('dev-', '');
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
+        });
       } else if (node.id.startsWith('agent-')) {
-         const agentId = node.id.replace('agent-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
-           method: 'PUT',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
-         });
+        const agentId = node.id.replace('agent-', '');
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
+        });
       } else if (node.id.startsWith('container-')) {
-         // Containers have no DB record — persist their position in localStorage.
-         const saved = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
-         saved[node.id] = { x: node.position.x, y: node.position.y };
-         localStorage.setItem('topology-container-positions', JSON.stringify(saved));
+        const saved = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
+        saved[node.id] = { x: node.position.x, y: node.position.y };
+        localStorage.setItem('topology-container-positions', JSON.stringify(saved));
       }
     } catch(err) { console.error("Failed to save coordinates: ", err); }
   }, []);
