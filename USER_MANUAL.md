@@ -65,6 +65,38 @@ The top-most node represents your network's gateway.
 ### 4.3 Exporting
 Click **Export as PNG** in the top-right of the topology view to save a high-resolution snapshot of your network map.
 
+### 4.4 Node Positioning & Auto-Layout
+
+HomeLabInfo stores node positions so your map looks the same every time you open it. Here is exactly how it works:
+
+| Node type | Where the position is stored |
+|---|---|
+| **Router** | Backend database (settings `RouterPosX` / `RouterPosY`) |
+| **Device / Agent** | Backend database (`positionX` / `positionY` columns) |
+| **Subnet group nodes** | Browser `localStorage` (`topology-subnet-positions`) |
+| **Container nodes** | Browser `localStorage` (`topology-container-positions`) |
+| **Viewport** (pan + zoom) | Browser `localStorage` (`topology-viewport`) |
+
+#### Multi-Subnet Auto-Layout
+When devices from **more than one subnet** are present (e.g. `192.168.1.x` and `192.168.2.x`), the topology automatically inserts a **Subnet node** (purple) between the router and each group of devices. The auto-layout engine calculates how wide each subnet's device fan needs to be — based on device count — and spaces the subnet nodes accordingly so nothing overlaps.
+
+Devices are arranged in a **grid of up to 6 columns** beneath their subnet node, wrapping to additional rows as needed.
+
+> [!IMPORTANT]
+> **Stale positions after switching to multi-subnet** 
+> If you previously had a single-subnet setup and devices already have saved positions in the database, those old coordinates will override the new auto-layout when you add a second subnet. You may see nodes clustered or misaligned.
+
+#### How to fully reset all positions
+
+1. Go to the **Network** page.
+2. Click the **🗑 Clear All** (trash) button to delete every device record from the database.
+3. Run a fresh scan with all your subnet prefixes (e.g. `192.168.1., 192.168.2.`).
+4. The topology will re-render with a clean auto-layout — no stale positions remain.
+5. *(Optional)* Open your browser DevTools → Application → Local Storage and delete the `topology-subnet-positions` and `topology-container-positions` keys if you also want to reset subnet and container positions.
+
+> [!NOTE]
+> Agent nodes are registered separately and are not deleted by "Clear All". If an agent node position is stale, open the **Edit Node** dialog (double-click the agent) and drag it to the desired location — the new position will be saved automatically.
+
 ---
 
 ## 5. Agents & Containers
@@ -89,5 +121,5 @@ When an agent is detected:
 
 ---
 
-*Manual Version: 1.0.0.10*  
+*Manual Version: 1.0.0.11*  
 *Last Updated: May 2026*
