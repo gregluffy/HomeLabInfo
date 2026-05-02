@@ -76,7 +76,7 @@ function DeviceNode({ data }: { data: any }) {
   const isOffline = data.status === 'Offline';
   
   return (
-    <div className={`bg-neutral-900 border-[3px] p-5 rounded-2xl shadow-lg w-[220px] transition-all hover:scale-105 cursor-pointer 
+    <div className={`bg-neutral-900 border-[3px] p-5 rounded-2xl shadow-lg w-[220px] transition-all hover:ring-2 hover:ring-offset-2 hover:ring-offset-neutral-900 hover:ring-current cursor-pointer 
       ${isOffline ? 'border-dashed border-rose-500/50 opacity-60 grayscale' : 'border-emerald-500/80 shadow-emerald-900/30'}`}>
       <Handle type="target" position={Position.Top} className={`!w-3 !h-3 ${isOffline ? '!bg-rose-500' : '!bg-emerald-500'}`} />
       <div className={`flex items-center gap-3 border-b pb-3 mb-3 ${isOffline ? 'border-rose-500/30' : 'border-emerald-500/30'}`}>
@@ -100,7 +100,7 @@ function ContainerNode({ data }: { data: any }) {
   const isRunning = data.state === 'running';
 
   return (
-    <div className={`bg-neutral-900/90 border-2 p-4 rounded-xl shadow-md w-[190px] transition-all hover:scale-105 cursor-pointer
+    <div className={`bg-neutral-900/90 border-2 p-4 rounded-xl shadow-md w-[190px] transition-all hover:ring-2 hover:ring-offset-2 hover:ring-offset-neutral-900 hover:ring-current cursor-pointer
       ${isRunning ? 'border-cyan-500/70 shadow-cyan-900/20' : 'border-neutral-600/50 opacity-60'}`}>
       <Handle type="target" position={Position.Top} className={`!w-2.5 !h-2.5 ${isRunning ? '!bg-cyan-500' : '!bg-neutral-500'}`} />
       <div className={`flex items-center gap-2.5 border-b pb-2.5 mb-2.5 ${isRunning ? 'border-cyan-500/20' : 'border-neutral-700/30'}`}>
@@ -313,7 +313,7 @@ function InnerGraph() {
             id: `e-router-${subnetId}`,
             source: 'router',
             target: subnetId,
-            animated: true,
+            data: { shouldAnimate: true },
             style: { stroke: '#8b5cf6', strokeWidth: 2.5 }
           });
         }
@@ -363,7 +363,7 @@ function InnerGraph() {
             id: `e-${edgeSource}-${id}`,
             source: edgeSource,
             target: id,
-            animated: d.status === 'Online',
+            data: { shouldAnimate: d.status === 'Online' },
             style: { stroke: d.status === 'Online' ? '#10b981' : '#f43f5e', strokeWidth: 2, opacity: d.status === 'Online' ? 1 : 0.4 }
           });
         });
@@ -523,7 +523,7 @@ function InnerGraph() {
             id: `e-${agentEdgeSource}-${agentNodeId}`,
             source: agentEdgeSource,
             target: agentNodeId,
-            animated: true,
+            data: { shouldAnimate: true },
             style: { stroke: '#6366f1', strokeWidth: 2 }
           });
 
@@ -563,7 +563,7 @@ function InnerGraph() {
               id: `e-${agentNodeId}-${containerId}`,
               source: agentNodeId,
               target: containerId,
-              animated: c.state === 'running',
+              data: { shouldAnimate: c.state === 'running' },
               style: {
                 stroke: c.state === 'running' ? '#06b6d4' : '#525252',
                 strokeWidth: 1.5,
@@ -750,13 +750,14 @@ function InnerGraph() {
           fitView={savedViewport === null}
           minZoom={0.1}
           maxZoom={4}
+          onlyRenderVisibleElements={true}
           className="bg-neutral-950 flex-1 w-full relative z-0"
         >
           <Controls className="bg-black/80 border-white/10" style={{ zIndex: 10 }} />
           <MiniMap className="bg-black/50 border-white/5 rounded-xl overflow-hidden" maskColor="rgba(0,0,0,0.8)" nodeColor="#6366f1" style={{ zIndex: 10 }}/>
           <Background variant={BackgroundVariant.Dots} gap={32} size={2} color="#ffffff20" />
           
-          <Panel position="top-right" className="!m-6">
+          <Panel position="top-right" className="!m-6 flex flex-col gap-3 items-end">
             <button 
               onClick={downloadGraph}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/20"
