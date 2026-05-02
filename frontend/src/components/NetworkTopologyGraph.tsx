@@ -451,7 +451,8 @@ function InnerGraph() {
           const agentIndexPerPrefix = new Map<string, number>();
 
           for (const { agent: a, prefix, containers } of agentWithPrefix) {
-            if (a.positionX != null) continue;
+            // In multi-subnet mode: always recompute — saved positions are stale
+            // (they were set in single-subnet layout at the wrong Y).
             if (!prefix) {
               agentDefaultPositions.set(a.id, { x: routerPos.x, y: 900 });
               continue;
@@ -467,7 +468,8 @@ function InnerGraph() {
             // X: fan agents horizontally, centred over the subnet column
             const subnetCenterX = subnetDefaultCenters.get(prefix) ?? routerPos.x;
             const fanWidth = Math.max(AGENT_NODE_W, Math.min(containers.length, 4) * CONTAINER_SPACING);
-            const totalAgentsInSubnet = agentWithPrefix.filter(e => e.prefix === prefix && e.agent.positionX == null).length;
+            // Count ALL agents in this subnet (not just unsaved) for correct centering
+            const totalAgentsInSubnet = agentWithPrefix.filter(e => e.prefix === prefix).length;
             const totalFanWidth = totalAgentsInSubnet * (fanWidth + FAN_MARGIN) - FAN_MARGIN;
             const startX = subnetCenterX - totalFanWidth / 2;
 
@@ -486,7 +488,9 @@ function InnerGraph() {
 
         for (const { agent: a, containers, hostMetrics, prefix } of agentWithPrefix) {
           const agentNodeId = `agent-${a.id}`;
-          const pos = a.positionX != null
+          // Single-subnet: respect saved position (user may have dragged it)
+          // Multi-subnet:  always use fresh computed position — saved Y is stale
+          const pos = (!multiSubnet && a.positionX != null)
             ? { x: a.positionX, y: a.positionY ?? 600 }
             : (agentDefaultPositions.get(a.id) ?? { x: routerPos.x, y: 800 });
 
