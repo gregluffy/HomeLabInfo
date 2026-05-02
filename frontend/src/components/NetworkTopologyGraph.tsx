@@ -24,7 +24,7 @@ import {
   Viewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Server, Router, Download, X, Save, Trash2, Box } from 'lucide-react';
+import { Server, Router, Download, X, Save, Trash2, Box, Network } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Custom Node types
@@ -125,10 +125,33 @@ function ContainerNode({ data }: { data: any }) {
   );
 }
 
+function SubnetNode({ data }: { data: any }) {
+  return (
+    <div className="bg-neutral-900 border-[3px] border-violet-500/80 p-4 rounded-2xl shadow-lg shadow-violet-900/30 w-[210px]">
+      <Handle type="target" position={Position.Top} className="!bg-violet-500 !w-3 !h-3" />
+      <div className="flex items-center gap-3 border-b border-violet-500/30 pb-3 mb-3">
+        <div className="p-2 bg-violet-500/20 rounded-lg shrink-0">
+          <Network className="w-5 h-5 text-violet-400" />
+        </div>
+        <div>
+          <h3 className="text-[13px] font-bold text-white truncate">{data.label}</h3>
+          <span className="text-[10px] text-violet-300/70 font-mono">{data.cidr}</span>
+        </div>
+      </div>
+      <div className="flex justify-between items-center text-xs font-mono">
+        <span className="text-neutral-500">DEVICES</span>
+        <span className="text-violet-300 bg-violet-500/10 font-bold px-2 py-0.5 rounded">{data.deviceCount}</span>
+      </div>
+      <Handle type="source" position={Position.Bottom} className="!bg-violet-500 !w-3 !h-3" />
+    </div>
+  );
+}
+
 const nodeTypes = {
   vm: VmNode,
   device: DeviceNode,
   container: ContainerNode,
+  subnet: SubnetNode,
 };
 
 function InnerGraph() {
@@ -194,13 +217,12 @@ function InnerGraph() {
   }, []);
 
   const loadGraph = useCallback(async (overrideIp?: string) => {
-    if (!routerLoaded) return; // Wait for router settings to prevent glitching
+    if (!routerLoaded) return;
     const initialNodes: Node[] = [];
     const initialEdges: Edge[] = [];
-    
+
     const activeRouterIp = overrideIp || routerIp;
-    
-    // Base Network Router Node (ALWAYS added)
+
     initialNodes.push({
       id: 'router',
       type: 'device',
@@ -213,30 +235,153 @@ function InnerGraph() {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices`).catch((e) => { console.error("Device fetch error", e); return null; }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`).catch((e) => { console.error("Agent fetch error", e); return null; })
       ]);
-      
+
       let devices: any[] = [];
       let agents: any[] = [];
-      
+
       if (devicesRes && devicesRes.ok) {
-         try { devices = await devicesRes.json(); } catch(e) { console.error("Device JSON error", e); }
+        try { devices = await devicesRes.json(); } catch(e) { console.error("Device JSON error", e); }
       }
       if (agentsRes && agentsRes.ok) {
-         try { agents = await agentsRes.json(); } catch(e) { console.error("Agent JSON error", e); }
+        try { agents = await agentsRes.json(); } catch(e) { console.error("Agent JSON error", e); }
       }
 
-      // Add device nodes
+      // ── Determine subnets ──────────────────────────────────────────────────
+      const filteredDevices = Array.isArray(devices)
+        ? devices.filter((d: any) => d.ipAddress !== activeRouterIp)
+        : [];
+
+      // Group by first 3 octets: "192.168.1"
+      const subnetMap = new Map<string, any[]>();
+      for (const d of filteredDevices) {
+        const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+        if (!subnetMap.has(prefix)) subnetMap.set(prefix, []);
+        subnetMap.get(prefix)!.push(d);
+      }
+
+      const multiSubnet = subnetMap.size > 1;
+
+      // Load saved subnet positions from localStorage
+      let savedSubnetPositions: Record<string, { x: number; y: number }> = {};
+      try {
+        savedSubnetPositions = JSON.parse(localStorage.getItem('topology-subnet-positions') || '{}');
+      } catch { /* ignore */ }
+
+      // ── Layout constants ───────────────────────────────────────────────────
+      const DEV_SPACING_X = 260;  // horizontal gap between device nodes
+      const SUBNET_MARGIN  = 80;  // extra gap between adjacent subnet fans
+      const SUBNET_NODE_W  = 210; // width of the subnet node card
+      const DEV_ROW_SIZE   = 6;   // max devices per row before wrapping
+
+      // ── Pre-compute each subnet's required width ───────────────────────────
+      // Width = max(SUBNET_NODE_W, deviceCount * DEV_SPACING_X)
+      const subnetPrefixes = [...subnetMap.keys()];
+      const subnetWidths = new Map<string, number>();
+      for (const prefix of subnetPrefixes) {
+        const count = subnetMap.get(prefix)!.length;
+        const rowLen = Math.min(count, DEV_ROW_SIZE);
+        subnetWidths.set(prefix, Math.max(SUBNET_NODE_W, rowLen * DEV_SPACING_X));
+      }
+
+      // ── Assign auto X centres for subnets (cumulative, left→right) ─────────
+      const totalWidth = [...subnetWidths.values()].reduce((s, w) => s + w + SUBNET_MARGIN, -SUBNET_MARGIN);
+      const subnetDefaultCenters = new Map<string, number>();
+      let cursor = routerPos.x - totalWidth / 2;
+      for (const prefix of subnetPrefixes) {
+        const w = subnetWidths.get(prefix)!;
+        subnetDefaultCenters.set(prefix, cursor + w / 2);
+        cursor += w + SUBNET_MARGIN;
+      }
+
+      // ── Create subnet nodes (only when >1 subnet) ─────────────────────────
+      if (multiSubnet) {
+        for (const prefix of subnetPrefixes) {
+          const subnetId = `subnet-${prefix}`;
+          const centerX = subnetDefaultCenters.get(prefix)!;
+          const pos = savedSubnetPositions[subnetId] ?? { x: centerX - SUBNET_NODE_W / 2, y: 280 };
+          initialNodes.push({
+            id: subnetId,
+            type: 'subnet',
+            position: pos,
+            data: {
+              label: `${prefix}.0`,
+              cidr: `${prefix}.0/24`,
+              deviceCount: subnetMap.get(prefix)!.length,
+            }
+          });
+          initialEdges.push({
+            id: `e-router-${subnetId}`,
+            source: 'router',
+            target: subnetId,
+            animated: true,
+            style: { stroke: '#8b5cf6', strokeWidth: 2.5 }
+          });
+        }
+      }
+
+      // ── Add device nodes ──────────────────────────────────────────────────
       if (Array.isArray(devices)) {
-        devices.forEach((d: any, index: number) => {
-          if (d.ipAddress === activeRouterIp) return; 
+        filteredDevices.forEach((d: any, index: number) => {
           const id = `dev-${d.id}`;
+          const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+          const subnetId = `subnet-${prefix}`;
+          const subnetDevices = subnetMap.get(prefix) ?? [];
+          const subnetIndex = subnetDevices.findIndex((sd: any) => sd.id === d.id);
+
+          let defaultX: number;
+          let defaultY: number;
+
+          if (multiSubnet) {
+            // Use saved subnet position if available; otherwise use computed centre
+            const savedSubnetX = savedSubnetPositions[subnetId]?.x;
+            const subnetCenterX = savedSubnetX != null
+              ? savedSubnetX + SUBNET_NODE_W / 2
+              : (subnetDefaultCenters.get(prefix) ?? 0);
+
+            // Multi-row grid layout centred under the subnet node
+            const row = Math.floor(subnetIndex / DEV_ROW_SIZE);
+            const col = subnetIndex % DEV_ROW_SIZE;
+            const rowCount = Math.min(DEV_ROW_SIZE, subnetDevices.length - row * DEV_ROW_SIZE);
+            const rowOffsetX = (rowCount - 1) * DEV_SPACING_X / 2;
+
+            defaultX = subnetCenterX - rowOffsetX + col * DEV_SPACING_X;
+            defaultY = 510 + row * 220;
+          } else {
+            defaultX = 100 + (index * DEV_SPACING_X);
+            defaultY = 350;
+          }
+
           initialNodes.push({
             id,
             type: 'device',
-            position: { x: d.positionX ?? (100 + (index * 250)), y: d.positionY ?? 350 },
+            position: { x: d.positionX ?? defaultX, y: d.positionY ?? defaultY },
             data: { label: d.hostName || d.macAddress || 'Unknown Device', ip: d.ipAddress, status: d.status, rawDevice: d }
           });
-          initialEdges.push({ id: `e-router-${id}`, source: 'router', target: id, animated: d.status === 'Online', style: { stroke: d.status === 'Online' ? '#10b981' : '#f43f5e', strokeWidth: 2, opacity: d.status === 'Online' ? 1 : 0.4 } });
+
+          const edgeSource = multiSubnet ? subnetId : 'router';
+          initialEdges.push({
+            id: `e-${edgeSource}-${id}`,
+            source: edgeSource,
+            target: id,
+            animated: d.status === 'Online',
+            style: { stroke: d.status === 'Online' ? '#10b981' : '#f43f5e', strokeWidth: 2, opacity: d.status === 'Online' ? 1 : 0.4 }
+          });
         });
+      }
+
+      // ── Track real bottom edge of each subnet's device fan ────────────────
+      // Used by the agent layout below so agents sit below the last device row,
+      // even when devices have stale saved positions from a previous layout.
+      const subnetMaxDeviceY = new Map<string, number>();
+      if (multiSubnet) {
+        for (const n of initialNodes) {
+          if (!n.id.startsWith('dev-')) continue;
+          const d = filteredDevices.find((fd: any) => `dev-${fd.id}` === n.id);
+          if (!d) continue;
+          const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+          const nodeY = n.position.y;
+          subnetMaxDeviceY.set(prefix, Math.max(subnetMaxDeviceY.get(prefix) ?? 0, nodeY));
+        }
       }
 
       if (Array.isArray(agents)) {
@@ -273,37 +418,93 @@ function InnerGraph() {
           })
         );
 
-        // ── Pass 2: calculate default X positions from cumulative fan widths ──
-        // Each agent "owns" a horizontal band wide enough for its container row.
-        // Agents that already have a saved position are placed there directly and
-        // do NOT consume space in the auto-layout cursor.
-        const CONTAINER_SPACING = 220; // px between container node centres
-        const FAN_MARGIN = 100;        // gap between adjacent agent fans
+        // ── Pass 2: resolve agent IPs + group by subnet ───────────────────────
+        const CONTAINER_SPACING = 220;
+        const FAN_MARGIN        = 100;
+        const AGENT_NODE_W      = 240; // width of VM card
+        const DEVICE_NODE_H     = 170; // approximate height of a DeviceNode card
 
-        let cursorX = 150;
+        // For each agent, resolve its IP prefix once
+        const agentWithPrefix = agentContainerData.map(entry => {
+          let agentIp: string | null = null;
+          try { const url = new URL(entry.agent.endpointUrl); agentIp = url.hostname; } catch { /* ignore */ }
+          const prefix = agentIp ? agentIp.split('.').slice(0, 3).join('.') : null;
+          return { ...entry, agentIp, prefix };
+        });
+
+        // ── Pass 3: compute default positions ─────────────────────────────────
         const agentDefaultPositions = new Map<number, { x: number; y: number }>();
 
-        for (const { agent: a, containers } of agentContainerData) {
-          if (a.positionX != null) continue; // saved position – skip cursor
-          const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
-          const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
-          // Center the 240px agent card (120 offset) over the middle of the fan
-          agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 120, y: 600 });
-          cursorX += fanWidth + FAN_MARGIN;
+        if (!multiSubnet) {
+          // ── Single-subnet: original cumulative cursor logic ──────────────────
+          let cursorX = 150;
+          for (const { agent: a, containers } of agentContainerData) {
+            if (a.positionX != null) continue;
+            const rowSize = containers.length > 0 ? Math.min(containers.length, 4) : 1;
+            const fanWidth = Math.max(rowSize * CONTAINER_SPACING, 350);
+            agentDefaultPositions.set(a.id, { x: cursorX + fanWidth / 2 - 120, y: 600 });
+            cursorX += fanWidth + FAN_MARGIN;
+          }
+        } else {
+          // ── Multi-subnet: place agents below the REAL bottom of their subnet's
+          //    device fan (uses actual node Y, not a formula).
+          const agentIndexPerPrefix = new Map<string, number>();
+
+          for (const { agent: a, prefix, containers } of agentWithPrefix) {
+            // In multi-subnet mode: always recompute — saved positions are stale
+            // (they were set in single-subnet layout at the wrong Y).
+            if (!prefix) {
+              agentDefaultPositions.set(a.id, { x: routerPos.x, y: 900 });
+              continue;
+            }
+
+            const agentIdx = agentIndexPerPrefix.get(prefix) ?? 0;
+            agentIndexPerPrefix.set(prefix, agentIdx + 1);
+
+            // Derive Y from the actual bottom of the last device row in this subnet
+            const maxDevY = subnetMaxDeviceY.get(prefix) ?? 510;
+            const agentY  = maxDevY + DEVICE_NODE_H + 80;
+
+            // X: fan agents horizontally, centred over the subnet column
+            const subnetCenterX = subnetDefaultCenters.get(prefix) ?? routerPos.x;
+            const fanWidth = Math.max(AGENT_NODE_W, Math.min(containers.length, 4) * CONTAINER_SPACING);
+            // Count ALL agents in this subnet (not just unsaved) for correct centering
+            const totalAgentsInSubnet = agentWithPrefix.filter(e => e.prefix === prefix).length;
+            const totalFanWidth = totalAgentsInSubnet * (fanWidth + FAN_MARGIN) - FAN_MARGIN;
+            const startX = subnetCenterX - totalFanWidth / 2;
+
+            agentDefaultPositions.set(a.id, {
+              x: startX + agentIdx * (fanWidth + FAN_MARGIN) + fanWidth / 2 - AGENT_NODE_W / 2,
+              y: agentY,
+            });
+          }
         }
 
-        // ── Pass 3: build agent + container nodes with correct positions ──────
-        // Load any container positions saved in localStorage
+        // ── Pass 4: build agent + container nodes ─────────────────────────────
+        // In multi-subnet mode, wipe any stale container positions from localStorage.
+        // Those positions are absolute and become invalid when agents move to new Y.
+        // Single-subnet mode keeps saved positions so user-dragged containers persist.
+        if (multiSubnet) {
+          localStorage.removeItem('topology-container-positions');
+        }
         let savedContainerPositions: Record<string, { x: number; y: number }> = {};
-        try {
-          savedContainerPositions = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
-        } catch { /* ignore */ }
+        if (!multiSubnet) {
+          try {
+            savedContainerPositions = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
+          } catch { /* ignore */ }
+        }
 
-        for (const { agent: a, containers, hostMetrics } of agentContainerData) {
+        for (const { agent: a, containers, hostMetrics, prefix } of agentWithPrefix) {
           const agentNodeId = `agent-${a.id}`;
-          const pos = a.positionX != null
+          // Single-subnet: respect saved position (user may have dragged it)
+          // Multi-subnet:  always use fresh computed position — saved Y is stale
+          const pos = (!multiSubnet && a.positionX != null)
             ? { x: a.positionX, y: a.positionY ?? 600 }
-            : (agentDefaultPositions.get(a.id) ?? { x: cursorX, y: 600 });
+            : (agentDefaultPositions.get(a.id) ?? { x: routerPos.x, y: 800 });
+
+          const agentEdgeSource = (multiSubnet && prefix && subnetMap.has(prefix))
+            ? `subnet-${prefix}`
+            : 'router';
 
           initialNodes.push({
             id: agentNodeId,
@@ -319,8 +520,8 @@ function InnerGraph() {
             }
           });
           initialEdges.push({
-            id: `e-router-${agentNodeId}`,
-            source: 'router',
+            id: `e-${agentEdgeSource}-${agentNodeId}`,
+            source: agentEdgeSource,
             target: agentNodeId,
             animated: true,
             style: { stroke: '#6366f1', strokeWidth: 2 }
@@ -340,11 +541,10 @@ function InnerGraph() {
             const containerId = `container-${a.id}-${cIdx}`;
             const containerName = (c.name || c.id || 'container').replace(/^\//, '');
 
-            // Use saved position from localStorage if available, otherwise compute default
             const savedPos = savedContainerPositions[containerId];
             const defaultPos = {
               x: pos.x + 120 + (col * CONTAINER_SPACING) - rowOffset,
-              y: pos.y + 320 + (row * 200)   // 320px gap below agent card, 200px between rows
+              y: pos.y + 320 + (row * 200)
             };
 
             initialNodes.push({
@@ -380,11 +580,12 @@ function InnerGraph() {
       setNodes(initialNodes);
       setEdges(initialEdges);
     }
-  }, [setNodes, setEdges, routerIp]);
+  }, [setNodes, setEdges, routerIp, routerLoaded, routerPos]);
 
+  // Trigger once routerLoaded flips to true (fixes multi-subnet blank topology)
   useEffect(() => {
-    loadGraph();
-  }, [loadGraph]);
+    if (routerLoaded) loadGraph();
+  }, [routerLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
@@ -393,36 +594,39 @@ function InnerGraph() {
   const onNodeDragStop = useCallback(async (event: any, node: Node) => {
     try {
       if (node.id === 'router') {
-          await Promise.all([
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ value: node.position.x.toString() })
-            }),
-            fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
-              method: 'PUT', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ value: node.position.y.toString() })
-            })
-          ]);
-          setRouterPos({ x: node.position.x, y: node.position.y });
+        await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: node.position.x.toString() })
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value: node.position.y.toString() })
+          })
+        ]);
+        setRouterPos({ x: node.position.x, y: node.position.y });
+      } else if (node.id.startsWith('subnet-')) {
+        const saved = JSON.parse(localStorage.getItem('topology-subnet-positions') || '{}');
+        saved[node.id] = { x: node.position.x, y: node.position.y };
+        localStorage.setItem('topology-subnet-positions', JSON.stringify(saved));
       } else if (node.id.startsWith('dev-')) {
-         const devId = node.id.replace('dev-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
-           method: 'PUT',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
-         });
+        const devId = node.id.replace('dev-', '');
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
+        });
       } else if (node.id.startsWith('agent-')) {
-         const agentId = node.id.replace('agent-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
-           method: 'PUT',
-           headers: { 'Content-Type': 'application/json' },
-           body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
-         });
+        const agentId = node.id.replace('agent-', '');
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
+        });
       } else if (node.id.startsWith('container-')) {
-         // Containers have no DB record — persist their position in localStorage.
-         const saved = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
-         saved[node.id] = { x: node.position.x, y: node.position.y };
-         localStorage.setItem('topology-container-positions', JSON.stringify(saved));
+        const saved = JSON.parse(localStorage.getItem('topology-container-positions') || '{}');
+        saved[node.id] = { x: node.position.x, y: node.position.y };
+        localStorage.setItem('topology-container-positions', JSON.stringify(saved));
       }
     } catch(err) { console.error("Failed to save coordinates: ", err); }
   }, []);
