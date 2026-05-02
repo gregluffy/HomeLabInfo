@@ -267,13 +267,38 @@ function InnerGraph() {
         savedSubnetPositions = JSON.parse(localStorage.getItem('topology-subnet-positions') || '{}');
       } catch { /* ignore */ }
 
-      // ── Create subnet nodes (only when >1 subnet) ─────────────────────────
+      // ── Layout constants ───────────────────────────────────────────────────
+      const DEV_SPACING_X = 260;  // horizontal gap between device nodes
+      const SUBNET_MARGIN  = 80;  // extra gap between adjacent subnet fans
+      const SUBNET_NODE_W  = 210; // width of the subnet node card
+      const DEV_ROW_SIZE   = 6;   // max devices per row before wrapping
+
+      // ── Pre-compute each subnet's required width ───────────────────────────
+      // Width = max(SUBNET_NODE_W, deviceCount * DEV_SPACING_X)
       const subnetPrefixes = [...subnetMap.keys()];
+      const subnetWidths = new Map<string, number>();
+      for (const prefix of subnetPrefixes) {
+        const count = subnetMap.get(prefix)!.length;
+        const rowLen = Math.min(count, DEV_ROW_SIZE);
+        subnetWidths.set(prefix, Math.max(SUBNET_NODE_W, rowLen * DEV_SPACING_X));
+      }
+
+      // ── Assign auto X centres for subnets (cumulative, left→right) ─────────
+      const totalWidth = [...subnetWidths.values()].reduce((s, w) => s + w + SUBNET_MARGIN, -SUBNET_MARGIN);
+      const subnetDefaultCenters = new Map<string, number>();
+      let cursor = routerPos.x - totalWidth / 2;
+      for (const prefix of subnetPrefixes) {
+        const w = subnetWidths.get(prefix)!;
+        subnetDefaultCenters.set(prefix, cursor + w / 2);
+        cursor += w + SUBNET_MARGIN;
+      }
+
+      // ── Create subnet nodes (only when >1 subnet) ─────────────────────────
       if (multiSubnet) {
-        subnetPrefixes.forEach((prefix, si) => {
+        for (const prefix of subnetPrefixes) {
           const subnetId = `subnet-${prefix}`;
-          const defaultX = (window.innerWidth / 2 - 100) + (si - (subnetPrefixes.length - 1) / 2) * 340;
-          const pos = savedSubnetPositions[subnetId] ?? { x: defaultX, y: 280 };
+          const centerX = subnetDefaultCenters.get(prefix)!;
+          const pos = savedSubnetPositions[subnetId] ?? { x: centerX - SUBNET_NODE_W / 2, y: 280 };
           initialNodes.push({
             id: subnetId,
             type: 'subnet',
@@ -291,7 +316,7 @@ function InnerGraph() {
             animated: true,
             style: { stroke: '#8b5cf6', strokeWidth: 2.5 }
           });
-        });
+        }
       }
 
       // ── Add device nodes ──────────────────────────────────────────────────
@@ -303,17 +328,26 @@ function InnerGraph() {
           const subnetDevices = subnetMap.get(prefix) ?? [];
           const subnetIndex = subnetDevices.findIndex((sd: any) => sd.id === d.id);
 
-          // Default position relative to subnet node (if multiSubnet) or router
           let defaultX: number;
           let defaultY: number;
+
           if (multiSubnet) {
-            const subnetIdx = subnetPrefixes.indexOf(prefix);
-            const subnetCenterX = (savedSubnetPositions[subnetId]?.x) ??
-              ((window.innerWidth / 2 - 100) + (subnetIdx - (subnetPrefixes.length - 1) / 2) * 340);
-            defaultX = subnetCenterX + (subnetIndex - (subnetDevices.length - 1) / 2) * 250;
-            defaultY = 500;
+            // Use saved subnet position if available; otherwise use computed centre
+            const savedSubnetX = savedSubnetPositions[subnetId]?.x;
+            const subnetCenterX = savedSubnetX != null
+              ? savedSubnetX + SUBNET_NODE_W / 2
+              : (subnetDefaultCenters.get(prefix) ?? 0);
+
+            // Multi-row grid layout centred under the subnet node
+            const row = Math.floor(subnetIndex / DEV_ROW_SIZE);
+            const col = subnetIndex % DEV_ROW_SIZE;
+            const rowCount = Math.min(DEV_ROW_SIZE, subnetDevices.length - row * DEV_ROW_SIZE);
+            const rowOffsetX = (rowCount - 1) * DEV_SPACING_X / 2;
+
+            defaultX = subnetCenterX - rowOffsetX + col * DEV_SPACING_X;
+            defaultY = 510 + row * 220;
           } else {
-            defaultX = 100 + (index * 250);
+            defaultX = 100 + (index * DEV_SPACING_X);
             defaultY = 350;
           }
 
