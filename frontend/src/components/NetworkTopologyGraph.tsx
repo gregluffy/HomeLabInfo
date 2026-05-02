@@ -24,7 +24,7 @@ import {
   Viewport
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Server, Router, Download, X, Save, Trash2, Box, Network } from 'lucide-react';
+import { Server, Router, Download, X, Save, Trash2, Box, Network, Zap, ZapOff } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Custom Node types
@@ -160,6 +160,7 @@ function InnerGraph() {
   const [editingNode, setEditingNode] = useState<Node | null>(null);
   const [editName, setEditName] = useState("");
   const [editIp, setEditIp] = useState("");
+  const [animationsEnabled, setAnimationsEnabled] = useState(false);
   const flowRef = useRef<HTMLDivElement>(null);
   const { getNodes } = useReactFlow(); // Official XYFlow Context hooks
 
@@ -313,7 +314,7 @@ function InnerGraph() {
             id: `e-router-${subnetId}`,
             source: 'router',
             target: subnetId,
-            animated: true,
+            data: { shouldAnimate: true },
             style: { stroke: '#8b5cf6', strokeWidth: 2.5 }
           });
         }
@@ -363,7 +364,7 @@ function InnerGraph() {
             id: `e-${edgeSource}-${id}`,
             source: edgeSource,
             target: id,
-            animated: d.status === 'Online',
+            data: { shouldAnimate: d.status === 'Online' },
             style: { stroke: d.status === 'Online' ? '#10b981' : '#f43f5e', strokeWidth: 2, opacity: d.status === 'Online' ? 1 : 0.4 }
           });
         });
@@ -523,7 +524,7 @@ function InnerGraph() {
             id: `e-${agentEdgeSource}-${agentNodeId}`,
             source: agentEdgeSource,
             target: agentNodeId,
-            animated: true,
+            data: { shouldAnimate: true },
             style: { stroke: '#6366f1', strokeWidth: 2 }
           });
 
@@ -563,7 +564,7 @@ function InnerGraph() {
               id: `e-${agentNodeId}-${containerId}`,
               source: agentNodeId,
               target: containerId,
-              animated: c.state === 'running',
+              data: { shouldAnimate: c.state === 'running' },
               style: {
                 stroke: c.state === 'running' ? '#06b6d4' : '#525252',
                 strokeWidth: 1.5,
@@ -737,7 +738,7 @@ function InnerGraph() {
         <ReactFlow
           ref={flowRef}
           nodes={nodes}
-          edges={edges}
+          edges={edges.map(e => ({ ...e, animated: animationsEnabled && e.data?.shouldAnimate }))}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
@@ -750,13 +751,22 @@ function InnerGraph() {
           fitView={savedViewport === null}
           minZoom={0.1}
           maxZoom={4}
+          onlyRenderVisibleElements={true}
           className="bg-neutral-950 flex-1 w-full relative z-0"
         >
           <Controls className="bg-black/80 border-white/10" style={{ zIndex: 10 }} />
           <MiniMap className="bg-black/50 border-white/5 rounded-xl overflow-hidden" maskColor="rgba(0,0,0,0.8)" nodeColor="#6366f1" style={{ zIndex: 10 }}/>
           <Background variant={BackgroundVariant.Dots} gap={32} size={2} color="#ffffff20" />
           
-          <Panel position="top-right" className="!m-6">
+          <Panel position="top-right" className="!m-6 flex flex-col gap-3 items-end">
+            <button 
+              onClick={() => setAnimationsEnabled(!animationsEnabled)}
+              className={`px-4 py-2 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 shadow-lg ${animationsEnabled ? 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20' : 'bg-neutral-800 hover:bg-neutral-700 border border-white/10'}`}
+              title={animationsEnabled ? "Disable animations to save CPU/GPU" : "Enable animations"}
+            >
+              {animationsEnabled ? <Zap className="w-4 h-4 text-amber-400" /> : <ZapOff className="w-4 h-4 text-neutral-400" />}
+              Animations: {animationsEnabled ? 'ON' : 'OFF'}
+            </button>
             <button 
               onClick={downloadGraph}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-semibold transition-colors flex items-center gap-2 shadow-lg shadow-indigo-500/20"
