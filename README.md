@@ -9,6 +9,10 @@ HomeLabInfo is a self-hosted, cross-platform network scanner and visualization d
 
 It provides an intuitive interface to seamlessly discover devices on your local network, track their online/offline statuses, and persist a visual map of your network topology. Originally inspired by traditional Windows Forms network scanners, this modernized web-based solution brings homelab management into the browser.
 
+### 🌟 Featured On
+We are thrilled to be featured on XDA Developers! Check out their coverage of HomeLabInfo:
+* [This open-source dashboard gave me the unified view of my home lab I needed](https://www.xda-developers.com/open-source-dashboard-gave-me-unified-view-home-lab-needed/)
+
 ### Visualizing Your Network
 Discovering and managing your devices is easier than ever with our interactive topology and container management views.
 
