@@ -47,6 +47,7 @@ export default function NetworkSummaryCard() {
   }, []);
 
   const handleScan = async () => {
+    if (isScanning) return;
     setIsScanning(true);
     try {
       // Persist the base IP for next time
@@ -65,6 +66,23 @@ export default function NetworkSummaryCard() {
       setIsScanning(false);
     }
   };
+
+  // Auto-poll DB every 10 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isScanning) fetchDevices();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isScanning]);
+
+  // Auto-trigger full network scan every 5 minutes
+  useEffect(() => {
+    if (!baseIp) return;
+    const interval = setInterval(() => {
+      handleScan();
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [baseIp, deepScan, isScanning]);
 
   const onlineCount = devices.filter(d => d.status === "Online").length;
   const offlineCount = devices.filter(d => d.status === "Offline").length;

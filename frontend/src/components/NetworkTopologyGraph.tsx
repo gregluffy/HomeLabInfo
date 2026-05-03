@@ -587,6 +587,15 @@ function InnerGraph() {
     if (routerLoaded) loadGraph();
   }, [routerLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-refresh graph data every 15 seconds to fetch latest container metrics and devices
+  useEffect(() => {
+    if (!routerLoaded) return;
+    const interval = setInterval(() => {
+      loadGraph();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [routerLoaded, loadGraph]);
+
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
