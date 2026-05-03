@@ -28,6 +28,12 @@ The scanner supports scanning multiple subnets simultaneously.
 - **Offline**: If a device was previously found but fails to respond during a scan *within its subnet*, it is marked as Offline.
 - **Selective Tracking**: Scanning one subnet (e.g., `192.168.1.`) will **not** mark devices in other subnets (e.g., `192.168.20.`) as offline.
 
+### 2.4 Live Polling
+The application allows you to monitor network changes in real-time without actively running a scan from the UI.
+- **Toggle Live Polling**: Enable the "Live Polling" switch next to the Scan button.
+- **Functionality**: When enabled, the dashboard will automatically fetch device updates from the database every 10 seconds.
+- **Use Case**: This is particularly useful if you trigger network scans from external applications (like n8n, cron jobs, etc.) and want new devices to appear automatically while keeping the application open.
+
 ---
 
 ## 3. Instant DHCP Discovery
@@ -121,5 +127,5 @@ When an agent is detected:
 
 ---
 
-*Manual Version: 1.0.0.12*  
+*Manual Version: 1.0.0.13*  
 *Last Updated: May 2026*
