@@ -587,6 +587,15 @@ function InnerGraph() {
     if (routerLoaded) loadGraph();
   }, [routerLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Auto-refresh graph data every 15 seconds to fetch latest container metrics and devices
+  useEffect(() => {
+    if (!routerLoaded) return;
+    const interval = setInterval(() => {
+      loadGraph();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [routerLoaded, loadGraph]);
+
 
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
 
@@ -670,13 +679,15 @@ function InnerGraph() {
 
   // Handle Modals 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback((_, node) => {
+    // Prevent modal from opening for read-only nodes
+    if (node.id.startsWith('container-') || node.id.startsWith('subnet-')) return;
+    
     setEditingNode(node);
     const nodeData = node.data as any;
     if (node.id === 'router') {
       setEditName(nodeData.label || 'Main Router');
       setEditIp(nodeData.ip || '');
     } else {
-      if (node.id.startsWith('container-')) return; // Container nodes are read-only
       setEditName(nodeData.label || 'Unknown Device');
       setEditIp(""); // Not editable for standard devices here
     }

@@ -19,24 +19,85 @@ public class NetworkScannerService
         _logger = logger;
     }
 
-    public async Task<List<NetworkDevice>> ScanNetworkAsync(List<string> baseIps, bool doPortScan)
+    public async Task<List<NetworkDevice>> ScanNetworkAsync(List<string> baseIps, bool doPortScan, string? scanInterface = null)
     {
         var foundHostsBag = new ConcurrentBag<NetworkDevice>();
         var mdnsTask = DiscoverMdnsHostsAsync();
-
         var scanTasks = new List<Task>();
+
+        bool arpScanUsed = false;
+        var arpScanResults = new Dictionary<string, string>(); // IP -> MAC
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            foreach (var baseIp in baseIps)
+            {
+                var rawPrefix = baseIp.Trim();
+                if (string.IsNullOrWhiteSpace(rawPrefix)) continue;
+                if (rawPrefix.Contains("/")) rawPrefix = rawPrefix.Split('/')[0];
+                var ipParts = rawPrefix.Split('.');
+                if (ipParts.Length < 3) continue;
+                
+                string subnetToScan = $"{ipParts[0]}.{ipParts[1]}.{ipParts[2]}.0/24";
+                string interfaceArg = !string.IsNullOrWhiteSpace(scanInterface) ? $"-I {scanInterface}" : "";
+                
+                try
+                {
+                    string output = await RunProcessAsync("arp-scan", $"{interfaceArg} {subnetToScan} -q");
+                    if (!string.IsNullOrWhiteSpace(output) && output.Contains("Starting arp-scan"))
+                    {
+                        arpScanUsed = true;
+                        var matches = Regex.Matches(output, @"(?<ip>\d{1,3}(\.\d{1,3}){3})\s+(?<mac>([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2}))");
+                        foreach (Match match in matches)
+                        {
+                            var ip = match.Groups["ip"].Value;
+                            var mac = match.Groups["mac"].Value.Replace('-', ':').ToUpperInvariant();
+                            arpScanResults[ip] = mac;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to run arp-scan");
+                }
+            }
+        }
+
         foreach (var baseIp in baseIps)
         {
-            var prefix = baseIp.Trim();
-            if (string.IsNullOrWhiteSpace(prefix)) continue;
+            var rawPrefix = baseIp.Trim();
+            if (string.IsNullOrWhiteSpace(rawPrefix)) continue;
             
-            // Ensure prefix ends with a dot
-            if (!prefix.EndsWith(".")) prefix += ".";
-
-            for (int i = 1; i < 255; i++)
+            // Normalize CIDR and full IPs to a prefix
+            if (rawPrefix.Contains("/")) rawPrefix = rawPrefix.Split('/')[0];
+            var ipParts = rawPrefix.Split('.');
+            string prefix = rawPrefix;
+            
+            if (ipParts.Length >= 3)
             {
-                string ip = $"{prefix}{i}";
-                scanTasks.Add(Task.Run(() => PingDeviceAsync(ip, foundHostsBag, doPortScan)));
+                prefix = $"{ipParts[0]}.{ipParts[1]}.{ipParts[2]}.";
+            }
+            else if (!prefix.EndsWith("."))
+            {
+                prefix += ".";
+            }
+
+            if (arpScanUsed)
+            {
+                // Process IPs discovered by arp-scan
+                foreach (var ip in arpScanResults.Keys.Where(k => k.StartsWith(prefix)))
+                {
+                    scanTasks.Add(Task.Run(() => ProcessDiscoveredDeviceAsync(ip, arpScanResults[ip], foundHostsBag, doPortScan)));
+                }
+            }
+            else
+            {
+                // Fallback to ping sweep
+                for (int i = 1; i < 255; i++)
+                {
+                    string ip = $"{prefix}{i}";
+                    scanTasks.Add(Task.Run(() => PingDeviceAsync(ip, foundHostsBag, doPortScan)));
+                }
             }
         }
 
@@ -63,6 +124,31 @@ public class NetworkScannerService
         }
 
         return sortedHosts;
+    }
+    private async Task ProcessDiscoveredDeviceAsync(string ipAddress, string macAddress, ConcurrentBag<NetworkDevice> listToAdd, bool doPortScan)
+    {
+        try
+        {
+            string hostName = await GetHostNameAsync(ipAddress);
+
+            if (doPortScan && (hostName == "Unknown" || string.IsNullOrWhiteSpace(hostName)))
+            {
+                hostName = await TryIdentifyViaPortsAsync(ipAddress);
+            }
+
+            listToAdd.Add(new NetworkDevice
+            {
+                HostName = hostName,
+                IPAddress = ipAddress,
+                MacAddress = macAddress,
+                Status = "Online",
+                LastSeen = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, $"Failed to process discovered device {ipAddress}");
+        }
     }
 
     private async Task PingDeviceAsync(string ipAddress, ConcurrentBag<NetworkDevice> listToAdd, bool doPortScan)

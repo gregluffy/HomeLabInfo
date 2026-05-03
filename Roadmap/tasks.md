@@ -10,6 +10,7 @@
 * Responsivenes improvements for mobile device.
 * Request for multiple Subnets scan.
 * Since new features and staff are being added i think we need to create an manual for the application.
+* On double click of the Containers node the name shown is wrong.
 
 # Todo
 * Add and ability to add notes on the Topology view. 

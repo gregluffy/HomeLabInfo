@@ -16,6 +16,7 @@ export default function NetworkSummaryCard() {
   const [isScanning, setIsScanning] = useState(false);
   const [baseIp, setBaseIp] = useState("192.168.2.");
   const [deepScan, setDeepScan] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -29,7 +30,7 @@ export default function NetworkSummaryCard() {
     }
   };
 
-  // Load saved base IP from DB on mount
+  // Load saved base IP and polling state from DB on mount
   useEffect(() => {
     fetchDevices();
 
@@ -43,10 +44,28 @@ export default function NetworkSummaryCard() {
       } catch {
         // Setting doesn't exist yet, use default
       }
+      
+      try {
+        const res = await fetch(`${apiUrl}/settings/LivePollingEnabled`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) setIsPolling(data.value === 'true');
+        }
+      } catch { }
     })();
   }, []);
 
+  const handlePollingToggle = (enabled: boolean) => {
+    setIsPolling(enabled);
+    fetch(`${apiUrl}/settings/LivePollingEnabled`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: enabled.toString() })
+    }).catch(() => {});
+  };
+
   const handleScan = async () => {
+    if (isScanning) return;
     setIsScanning(true);
     try {
       // Persist the base IP for next time
@@ -65,6 +84,15 @@ export default function NetworkSummaryCard() {
       setIsScanning(false);
     }
   };
+
+  // Auto-poll DB every 10 seconds for real-time updates
+  useEffect(() => {
+    if (!isPolling) return;
+    const interval = setInterval(() => {
+      if (!isScanning) fetchDevices();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isScanning, isPolling]);
 
   const onlineCount = devices.filter(d => d.status === "Online").length;
   const offlineCount = devices.filter(d => d.status === "Offline").length;
@@ -113,7 +141,27 @@ export default function NetworkSummaryCard() {
                 />
                 <div className="w-7 h-4 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
               </label>
-              <span className="text-[10px] font-semibold text-neutral-400 whitespace-nowrap select-none hidden xs:inline">Deep</span>
+              <label className="text-[10px] font-semibold text-neutral-400 whitespace-nowrap select-none cursor-pointer hidden sm:inline" onClick={() => setDeepScan(!deepScan)}>Deep Scan</label>
+            </div>
+
+            {/* Auto Poll Toggle */}
+            <div className="relative group flex items-center gap-1.5 px-1">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPolling}
+                  onChange={(e) => handlePollingToggle(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-7 h-4 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+              <label className="text-[10px] font-semibold text-neutral-400 whitespace-nowrap select-none cursor-pointer hidden sm:inline" onClick={() => handlePollingToggle(!isPolling)}>Live Polling</label>
+              
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-neutral-900 text-neutral-300 text-[10px] leading-snug rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 border border-white/10 text-center">
+                Enable auto-polling to see new devices in real-time if you trigger network scans from external applications (like n8n).
+                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white/10"></div>
+              </div>
             </div>
 
             <button 

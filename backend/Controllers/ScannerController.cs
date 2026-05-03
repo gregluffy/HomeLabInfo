@@ -29,10 +29,13 @@ public class ScannerController : ControllerBase
     [HttpPost("scan")]
     public async Task<IActionResult> ScanNetwork([FromQuery] string baseIp = "192.168.2.", [FromQuery] bool doPortScan = true)
     {
+        var interfaceSetting = await _context.Settings.FindAsync("ScanInterface");
+        string? scanInterface = interfaceSetting?.Value;
+
         var prefixes = baseIp.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         
         // For simplicity, we block and scan. In a production scenario, we'd run this via a BackgroundService.
-        var scannedDevices = await _scannerService.ScanNetworkAsync(prefixes, doPortScan);
+        var scannedDevices = await _scannerService.ScanNetworkAsync(prefixes, doPortScan, scanInterface);
 
         // Update DB
         foreach(var device in scannedDevices)

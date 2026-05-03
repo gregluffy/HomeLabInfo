@@ -29,6 +29,7 @@ export default function NetworkDetails() {
   const [isScanning, setIsScanning] = useState(false);
   const [baseIp, setBaseIp] = useState("192.168.2.");
   const [deepScan, setDeepScan] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
   const [sortField, setSortField] = useState<SortField>('ip');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -54,8 +55,33 @@ export default function NetworkDetails() {
           if (data.value) setBaseIp(data.value);
         }
       } catch { /* use default */ }
+      
+      try {
+        const res = await fetch(`${apiUrl}/settings/LivePollingEnabled`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) setIsPolling(data.value === 'true');
+        }
+      } catch { }
     })();
   }, []);
+
+  const handlePollingToggle = (enabled: boolean) => {
+    setIsPolling(enabled);
+    fetch(`${apiUrl}/settings/LivePollingEnabled`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: enabled.toString() })
+    }).catch(() => {});
+  };
+
+  useEffect(() => {
+    if (!isPolling) return;
+    const interval = setInterval(() => {
+      if (!isScanning) fetchDevices();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [isScanning, isPolling]);
 
   const handleScan = async () => {
     setIsScanning(true);
@@ -157,7 +183,21 @@ export default function NetworkDetails() {
                   <input type="checkbox" checked={deepScan} onChange={(e) => setDeepScan(e.target.checked)} className="sr-only peer" />
                   <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
                 </label>
-                <span className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none">Deep Scan</span>
+                <label className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none cursor-pointer" onClick={() => setDeepScan(!deepScan)}>Deep Scan</label>
+              </div>
+
+              <div className="relative group flex items-center gap-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked={isPolling} onChange={(e) => handlePollingToggle(e.target.checked)} className="sr-only peer" />
+                  <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+                <label className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none cursor-pointer" onClick={() => handlePollingToggle(!isPolling)}>Live Polling</label>
+                
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-neutral-900 text-neutral-300 text-[10px] leading-snug rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 border border-white/10 text-center">
+                  Enable auto-polling to see new devices in real-time if you trigger network scans from external applications (like n8n).
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white/10"></div>
+                </div>
               </div>
               <div className="flex gap-2">
                 <button

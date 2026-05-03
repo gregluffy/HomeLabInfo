@@ -15,6 +15,6 @@ EXPOSE 8080
 COPY --from=publish /app/publish .
 
 # Important: ensure ARP can be run, maybe need to install net-tools if needed for arp command
-RUN apt-get update && apt-get install -y net-tools iputils-ping && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y net-tools iputils-ping arp-scan && rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["dotnet", "HomeLabInfo.Api.dll"]
