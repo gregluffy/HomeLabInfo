@@ -55,8 +55,25 @@ export default function NetworkDetails() {
           if (data.value) setBaseIp(data.value);
         }
       } catch { /* use default */ }
+      
+      try {
+        const res = await fetch(`${apiUrl}/settings/LivePollingEnabled`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) setIsPolling(data.value === 'true');
+        }
+      } catch { }
     })();
   }, []);
+
+  // Persist Live Polling state
+  useEffect(() => {
+    fetch(`${apiUrl}/settings/LivePollingEnabled`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: isPolling.toString() })
+    }).catch(() => {});
+  }, [isPolling]);
 
   useEffect(() => {
     if (!isPolling) return;

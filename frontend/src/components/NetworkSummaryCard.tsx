@@ -30,7 +30,7 @@ export default function NetworkSummaryCard() {
     }
   };
 
-  // Load saved base IP from DB on mount
+  // Load saved base IP and polling state from DB on mount
   useEffect(() => {
     fetchDevices();
 
@@ -44,8 +44,25 @@ export default function NetworkSummaryCard() {
       } catch {
         // Setting doesn't exist yet, use default
       }
+      
+      try {
+        const res = await fetch(`${apiUrl}/settings/LivePollingEnabled`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) setIsPolling(data.value === 'true');
+        }
+      } catch { }
     })();
   }, []);
+
+  // Persist Live Polling state
+  useEffect(() => {
+    fetch(`${apiUrl}/settings/LivePollingEnabled`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: isPolling.toString() })
+    }).catch(() => {});
+  }, [isPolling]);
 
   const handleScan = async () => {
     if (isScanning) return;
