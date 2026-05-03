@@ -55,14 +55,14 @@ export default function NetworkSummaryCard() {
     })();
   }, []);
 
-  // Persist Live Polling state
-  useEffect(() => {
+  const handlePollingToggle = (enabled: boolean) => {
+    setIsPolling(enabled);
     fetch(`${apiUrl}/settings/LivePollingEnabled`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ value: isPolling.toString() })
+      body: JSON.stringify({ value: enabled.toString() })
     }).catch(() => {});
-  }, [isPolling]);
+  };
 
   const handleScan = async () => {
     if (isScanning) return;
@@ -150,12 +150,12 @@ export default function NetworkSummaryCard() {
                 <input
                   type="checkbox"
                   checked={isPolling}
-                  onChange={(e) => setIsPolling(e.target.checked)}
+                  onChange={(e) => handlePollingToggle(e.target.checked)}
                   className="sr-only peer"
                 />
                 <div className="w-7 h-4 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600"></div>
               </label>
-              <label className="text-[10px] font-semibold text-neutral-400 whitespace-nowrap select-none cursor-pointer hidden sm:inline" onClick={() => setIsPolling(!isPolling)}>Live Polling</label>
+              <label className="text-[10px] font-semibold text-neutral-400 whitespace-nowrap select-none cursor-pointer hidden sm:inline" onClick={() => handlePollingToggle(!isPolling)}>Live Polling</label>
               
               {/* Tooltip */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-neutral-900 text-neutral-300 text-[10px] leading-snug rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 border border-white/10 text-center">
