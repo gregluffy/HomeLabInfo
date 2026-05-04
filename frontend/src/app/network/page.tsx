@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import DeviceCard from "../../components/DeviceCard";
 import Link from 'next/link';
-import { Trash2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
+import { Trash2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Download, Home } from 'lucide-react';
 
 interface NetworkDevice {
   id: number;
@@ -122,6 +122,19 @@ export default function NetworkDetails() {
     }
   };
 
+  const handleExportJson = () => {
+    const dataStr = JSON.stringify(devices, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `network_topology_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleClear = async () => {
     if (!confirm("Are you sure you want to clear all network device records? This cannot be undone.")) return;
     try {
@@ -172,13 +185,11 @@ export default function NetworkDetails() {
       </div>
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        <Link href="/" className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-8 transition-colors">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          Back to Dashboard
-        </Link>
-
         <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-8">
           <div className="flex items-center gap-4 sm:gap-6">
+            <Link href="/" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-colors text-neutral-400 hover:text-white group" title="Back to Dashboard">
+              <Home className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            </Link>
             <img src="/logo.svg" alt="HomeLab Logo" className="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)] hidden xs:block" />
             <div>
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-1 sm:mb-2">
@@ -234,6 +245,14 @@ export default function NetworkDetails() {
                   title="Clear All Devices"
                 >
                   <Trash2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                </button>
+                <button
+                  onClick={handleExportJson}
+                  disabled={devices.length === 0}
+                  className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 font-semibold p-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                  title="Export Topology to JSON"
+                >
+                  <Download className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
                 </button>
                 <button
                   onClick={handleScan}
