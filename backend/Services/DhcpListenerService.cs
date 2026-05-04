@@ -111,6 +111,12 @@ public class DhcpListenerService : BackgroundService
                     // Check if we ALREADY know this MAC
                     var existing = await context.Devices.FirstOrDefaultAsync(d => d.MacAddress == mac);
                     
+                    // Fallback: If MAC is not found, check by HostName (useful for devices with randomized MACs)
+                    if (existing == null && hostName != "Unknown" && !string.IsNullOrWhiteSpace(hostName))
+                    {
+                        existing = await context.Devices.FirstOrDefaultAsync(d => d.HostName == hostName);
+                    }
+                    
                     if (existing == null)
                     {
                         _logger.LogInformation($"[DHCP] NEW DEVICE DISCOVERED: {hostName} ({mac})");
@@ -147,6 +153,20 @@ public class DhcpListenerService : BackgroundService
                         // Update existing device info
                         bool updated = false;
                         if (existing.Status != "Online") { existing.Status = "Online"; updated = true; }
+                        
+                        // If the device changed its MAC (found by hostname) or IP, update them
+                        if (existing.MacAddress != mac)
+                        {
+                            existing.MacAddress = mac;
+                            updated = true;
+                        }
+                        
+                        if (!string.IsNullOrEmpty(ipToRecord) && existing.IPAddress != ipToRecord)
+                        {
+                            existing.IPAddress = ipToRecord;
+                            updated = true;
+                        }
+
                         existing.LastSeen = DateTime.UtcNow;
                         
                         if (hostName != "Unknown" && (existing.HostName == "Unknown" || string.IsNullOrWhiteSpace(existing.HostName)))

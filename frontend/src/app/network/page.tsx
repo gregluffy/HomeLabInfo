@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import DeviceCard from "../../components/DeviceCard";
 import Link from 'next/link';
-import { Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Download, Home } from 'lucide-react';
 
 interface NetworkDevice {
   id: number;
@@ -30,6 +30,7 @@ export default function NetworkDetails() {
   const [baseIp, setBaseIp] = useState("192.168.2.");
   const [deepScan, setDeepScan] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>('ip');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
@@ -63,12 +64,29 @@ export default function NetworkDetails() {
           if (data.value) setIsPolling(data.value === 'true');
         }
       } catch { }
+
+      try {
+        const res = await fetch(`${apiUrl}/settings/DeepScanEnabled`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value) setDeepScan(data.value === 'true');
+        }
+      } catch { }
     })();
   }, []);
 
   const handlePollingToggle = (enabled: boolean) => {
     setIsPolling(enabled);
     fetch(`${apiUrl}/settings/LivePollingEnabled`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: enabled.toString() })
+    }).catch(() => {});
+  };
+
+  const handleDeepScanToggle = (enabled: boolean) => {
+    setDeepScan(enabled);
+    fetch(`${apiUrl}/settings/DeepScanEnabled`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value: enabled.toString() })
@@ -85,6 +103,7 @@ export default function NetworkDetails() {
 
   const handleScan = async () => {
     setIsScanning(true);
+    setScanError(null);
     try {
       await fetch(`${apiUrl}/settings/BaseIpPrefix`, {
         method: "PUT",
@@ -92,13 +111,28 @@ export default function NetworkDetails() {
         body: JSON.stringify({ value: baseIp })
       }).catch(() => {});
       const res = await fetch(`${apiUrl}/scanner/scan?baseIp=${baseIp}&doPortScan=${deepScan}`, { method: "POST" });
+      if (!res.ok) throw new Error("API Error");
       const data = await res.json();
       setDevices(data);
     } catch (err) {
       console.error("Failed to scan", err);
+      setScanError("Failed to connect to the scanner API. Please verify that the backend service is running.");
     } finally {
       setIsScanning(false);
     }
+  };
+
+  const handleExportJson = () => {
+    const dataStr = JSON.stringify(devices, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `network_topology_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleClear = async () => {
@@ -151,13 +185,11 @@ export default function NetworkDetails() {
       </div>
 
       <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-        <Link href="/" className="inline-flex items-center gap-2 text-neutral-400 hover:text-white mb-8 transition-colors">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          Back to Dashboard
-        </Link>
-
         <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-10 gap-8">
           <div className="flex items-center gap-4 sm:gap-6">
+            <Link href="/" className="p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-colors text-neutral-400 hover:text-white group" title="Back to Dashboard">
+              <Home className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            </Link>
             <img src="/logo.svg" alt="HomeLab Logo" className="w-12 h-12 sm:w-16 sm:h-16 drop-shadow-[0_0_15px_rgba(96,165,250,0.6)] hidden xs:block" />
             <div>
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight bg-gradient-to-br from-white via-neutral-200 to-neutral-500 bg-clip-text text-transparent mb-1 sm:mb-2">
@@ -180,10 +212,16 @@ export default function NetworkDetails() {
             <div className="flex items-center gap-4 flex-1 justify-between sm:justify-start">
               <div className="relative group flex items-center gap-2">
                 <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={deepScan} onChange={(e) => setDeepScan(e.target.checked)} className="sr-only peer" />
+                  <input type="checkbox" checked={deepScan} onChange={(e) => handleDeepScanToggle(e.target.checked)} className="sr-only peer" />
                   <div className="w-9 h-5 bg-neutral-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
                 </label>
-                <label className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none cursor-pointer" onClick={() => setDeepScan(!deepScan)}>Deep Scan</label>
+                <label className="text-xs font-semibold text-neutral-300 whitespace-nowrap select-none cursor-pointer" onClick={() => handleDeepScanToggle(!deepScan)}>Deep Scan</label>
+
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-neutral-900 text-neutral-300 text-[10px] leading-snug rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10 border border-white/10 text-center">
+                  Perform a thorough port scan to discover more device details. This will take significantly longer.
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-white/10"></div>
+                </div>
               </div>
 
               <div className="relative group flex items-center gap-2">
@@ -209,6 +247,14 @@ export default function NetworkDetails() {
                   <Trash2 className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
                 </button>
                 <button
+                  onClick={handleExportJson}
+                  disabled={devices.length === 0}
+                  className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/20 font-semibold p-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed group/btn"
+                  title="Export Topology to JSON"
+                >
+                  <Download className="w-5 h-5 group-hover/btn:scale-110 transition-transform" />
+                </button>
+                <button
                   onClick={handleScan}
                   disabled={isScanning}
                   className="relative overflow-hidden group bg-white text-black font-semibold px-6 sm:px-8 py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-200 flex-1 sm:flex-none"
@@ -229,6 +275,13 @@ export default function NetworkDetails() {
             </div>
           </div>
         </header>
+
+        {scanError && (
+          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-xl flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+            {scanError}
+          </div>
+        )}
 
         {/* Sort Bar */}
         {devices.length > 0 && (
