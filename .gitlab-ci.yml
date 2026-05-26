@@ -62,7 +62,7 @@ build-app:
   tags:
     - docker
   before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - *setup_buildx
   script:
     - |
@@ -74,7 +74,7 @@ build-app:
       # Push to Docker Hub only for release tags (no -RC in tag name)
       if ! echo "$CI_COMMIT_TAG" | grep -q -- "-RC"; then
         echo "Release tag detected — also pushing to Docker Hub"
-        docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+        echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
         TAGS="$TAGS -t $HUB_APP:$CI_COMMIT_TAG -t $HUB_APP:latest"
       else
         echo "RC tag detected — skipping Docker Hub push"
@@ -100,7 +100,7 @@ build-agent:
   tags:
     - docker
   before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - *setup_buildx
   script:
     - |
@@ -112,7 +112,7 @@ build-agent:
       # Push to Docker Hub only for release tags (no -RC in tag name)
       if ! echo "$CI_COMMIT_TAG" | grep -q -- "-RC"; then
         echo "Release tag detected — also pushing to Docker Hub"
-        docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+        echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
         TAGS="$TAGS -t $HUB_AGENT:$CI_COMMIT_TAG -t $HUB_AGENT:latest"
       else
         echo "RC tag detected — skipping Docker Hub push"
