@@ -7,7 +7,9 @@
 # =============================================================================
 
 # ---------- Stage 1: Build the .NET Backend ----------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
+# Use the host's native platform for compilation so cross-compiling ARM64 doesn't
+# run the SDK under QEMU (which breaks certain MSBuild expression evaluation).
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 WORKDIR /src/backend
 COPY backend/HomeLabInfo.Api.csproj ./
 RUN dotnet restore "HomeLabInfo.Api.csproj"
@@ -15,7 +17,7 @@ COPY backend/ .
 RUN dotnet publish "HomeLabInfo.Api.csproj" -c Release -o /app/backend/publish
 
 # ---------- Stage 2: Build the Next.js Frontend ----------
-FROM node:20-alpine AS frontend-build
+FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-build
 RUN apk add --no-cache libc6-compat
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
