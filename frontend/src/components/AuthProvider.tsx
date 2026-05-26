@@ -14,8 +14,8 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
 
   useEffect(() => {
-    const publicPaths = ["/login", "/setup"];
-    if (publicPaths.includes(pathname)) {
+    // /setup never needs a guard — avoids redirect loops
+    if (pathname === "/setup") {
       setReady(true);
       return;
     }
@@ -32,8 +32,17 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           return;
         }
 
+        // No users yet → always go to setup (even if already on /login)
         if (!status.hasUsers) {
           router.replace("/setup");
+          return;
+        }
+
+        // Users exist and we're on the login page
+        if (pathname === "/login") {
+          // Already logged in → bounce to dashboard
+          if (getToken()) { router.replace("/"); return; }
+          setReady(true);
           return;
         }
 
