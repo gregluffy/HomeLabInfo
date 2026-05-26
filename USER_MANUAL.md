@@ -121,11 +121,68 @@ When an agent is detected:
 
 ---
 
-## 6. Technical Settings
+## 6. Authentication (Optional)
+
+By default the dashboard is open with no login required. You can enable password protection via two environment variables in your Docker Compose file.
+
+### 6.1 Enabling Authentication
+
+Add the following to your `homelabinfo` service environment in your compose file:
+
+```yaml
+environment:
+  - AUTH_ENABLED=true
+  - JWT_SECRET=your-long-random-secret
+```
+
+Restart the container after making this change:
+```bash
+docker compose up -d --force-recreate
+```
+
+### 6.2 First-Time Account Setup
+
+On the first visit after enabling auth, if no account exists yet, the dashboard redirects you to a **Create Your Account** page (`/setup`). Enter a username (minimum 3 characters) and a password (minimum 8 characters) to create the admin account.
+
+> [!NOTE]
+> Only one account is supported. The setup page is only shown once — after an account is created it is no longer accessible.
+
+### 6.3 Logging In
+
+Once an account exists, the dashboard redirects unauthenticated visitors to the **Sign In** page (`/login`). Enter your username and password to receive a session token valid for **24 hours**.
+
+### 6.4 Signing Out
+
+When auth is enabled, a small user chip is visible in the footer showing your username. Click **Sign out** to clear your session and return to the login page.
+
+### 6.5 Configuration Reference
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `AUTH_ENABLED` | No | *(disabled)* | Set to `true` to enable the login screen. |
+| `JWT_SECRET` | No | auto-generated | Secret used to sign session tokens. **Set this** to keep sessions valid across container restarts. |
+
+Generate a strong secret with:
+```bash
+openssl rand -base64 32
+```
+
+> [!WARNING]
+> If `JWT_SECRET` is omitted, a new random secret is generated on every container start — all active sessions are invalidated on restart.
+
+### 6.6 Security Notes
+
+- Passwords are stored as **PBKDF2-SHA256** hashes (100,000 iterations, random salt) — never in plain text.
+- Sessions use **JWT tokens** signed with **HMAC-SHA256**.
+- Even with auth disabled, HomeLabInfo should only be accessed on a trusted local network or through a VPN. See the [Security & Disclaimer](README.md#security--disclaimer) section in the README.
+
+---
+
+## 7. Technical Settings
 - **API URL**: Ensure your frontend is pointed to the correct backend API in your `.env` file (`NEXT_PUBLIC_API_URL`).
 - **Persistence**: Most settings (Scan ranges, Router IP, Node positions) are stored in the backend SQL database for cross-device consistency.
 
 ---
 
-*Manual Version: 1.0.0.15*  
+*Manual Version: 1.0.0.14*  
 *Last Updated: May 2026*
