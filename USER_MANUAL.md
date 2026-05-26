@@ -184,5 +184,5 @@ openssl rand -base64 32
 
 ---
 
-*Manual Version: 1.0.0.14*  
+*Manual Version: 1.0.0.16*  
 *Last Updated: May 2026*

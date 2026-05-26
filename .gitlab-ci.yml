@@ -1,36 +1,39 @@
 # =============================================================================
 # HomeLab Info — GitLab CI/CD Pipeline
 # =============================================================================
-# Triggered automatically when a Git tag is pushed (e.g. v1.0.0.4).
+# Triggered automatically when a Git tag is pushed.
 #
-# Stages:
-#   1. build-app   → Build the frontend+backend combined image
-#   2. build-agent → Build the agent image
-#   3. push        → Push both images to the GitLab Container Registry
+# Tag behaviour:
+#   *-RC* tags  → build multi-arch images, push to GitLab Registry only
+#   all others  → build multi-arch images, push to GitLab Registry + Docker Hub
 #
-# Required CI/CD Variables (set in GitLab → Settings → CI/CD → Variables):
-#   CI_REGISTRY_USER     → your GitLab username (auto-provided by GitLab)
-#   CI_REGISTRY_PASSWORD → your GitLab token   (auto-provided by GitLab)
-#   CI_REGISTRY          → registry.gitlab.com  (auto-provided by GitLab)
+# Required CI/CD Variables (Settings → CI/CD → Variables):
+#   Auto-provided by GitLab:
+#     CI_REGISTRY_USER     – GitLab username
+#     CI_REGISTRY_PASSWORD – GitLab token
+#     CI_REGISTRY          – registry.gitlab.com
 #
-# The runner on your local network must have Docker available (shell or
-# docker executor with privileged mode OR docker-in-docker via dind).
+#   Add manually (protect + mask DOCKERHUB_TOKEN):
+#     DOCKERHUB_USERNAME   – Docker Hub username  (e.g. gfountopoulos)
+#     DOCKERHUB_TOKEN      – Docker Hub access token
+#
+# Runner requirement: shell/docker executor with /var/run/docker.sock mounted
+#   and privileged access (needed for QEMU binfmt registration).
 # =============================================================================
 
 variables:
-  # -- Image names in the GitLab Container Registry --
-  # They resolve to: registry.gitlab.com/administration7242251/homelabinfo/homelabinfo:<tag>
+  # GitLab Container Registry image names
   APP_IMAGE:   "$CI_REGISTRY_IMAGE/homelabinfo"
   AGENT_IMAGE: "$CI_REGISTRY_IMAGE/homelabinfo-agent"
 
-  # Use Docker BuildKit for faster, cache-friendly builds
+  # Docker Hub image names
+  HUB_APP:   "gfountopoulos/homelabinfo"
+  HUB_AGENT: "gfountopoulos/homelabinfo-agent"
+
+  DOCKER_HOST:     "unix:///var/run/docker.sock"
   DOCKER_BUILDKIT: "1"
 
-  # Runner uses Docker socket binding (/var/run/docker.sock mounted).
-  # This tells the Docker CLI inside the job container to use the host daemon.
-  DOCKER_HOST: "unix:///var/run/docker.sock"
-
-# ─── Only run when a tag is pushed ───────────────────────────────────────────
+# ─── Only run on tag pushes ───────────────────────────────────────────────────
 workflow:
   rules:
     - if: $CI_COMMIT_TAG
@@ -40,10 +43,15 @@ stages:
   - build-app
   - build-agent
 
-# ─── Shared login helper ─────────────────────────────────────────────────────
-.docker_login: &docker_login
-  before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+# ─── Shared: QEMU + buildx bootstrap ─────────────────────────────────────────
+# Registers ARM binfmt handlers on the host daemon so cross-compilation works.
+# Uses the docker-container driver (spawns a BuildKit container) which is more
+# reliable for multi-arch than the default docker driver.
+.setup_buildx: &setup_buildx
+  - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+  - docker buildx rm multiarch-builder 2>/dev/null || true
+  - docker buildx create --use --driver docker-container --name multiarch-builder
+  - docker buildx inspect --bootstrap
 
 # =============================================================================
 # Job 1 — Build & push the main app image (frontend + backend)
@@ -51,21 +59,35 @@ stages:
 build-app:
   stage: build-app
   image: docker:27
-  # No dind service — the runner already has /var/run/docker.sock mounted
   tags:
     - docker
-  <<: *docker_login
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - *setup_buildx
   script:
-    - echo "Building app image for tag $CI_COMMIT_TAG"
     - |
-      docker build \
-        --file Dockerfile \
-        --tag "$APP_IMAGE:$CI_COMMIT_TAG" \
-        --tag "$APP_IMAGE:latest" \
+      echo "Building app image for tag: $CI_COMMIT_TAG"
+
+      # Always push to GitLab Registry
+      TAGS="-t $APP_IMAGE:$CI_COMMIT_TAG -t $APP_IMAGE:latest"
+
+      # Push to Docker Hub only for release tags (no -RC in tag name)
+      if ! echo "$CI_COMMIT_TAG" | grep -q -- "-RC"; then
+        echo "Release tag detected — also pushing to Docker Hub"
+        docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+        TAGS="$TAGS -t $HUB_APP:$CI_COMMIT_TAG -t $HUB_APP:latest"
+      else
+        echo "RC tag detected — skipping Docker Hub push"
+      fi
+
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        $TAGS \
+        --push \
+        -f Dockerfile \
         .
-    - docker push "$APP_IMAGE:$CI_COMMIT_TAG"
-    - docker push "$APP_IMAGE:latest"
-    - echo "App image pushed → $APP_IMAGE:$CI_COMMIT_TAG"
+
+      echo "Done → $APP_IMAGE:$CI_COMMIT_TAG"
   rules:
     - if: $CI_COMMIT_TAG
 
@@ -75,20 +97,34 @@ build-app:
 build-agent:
   stage: build-agent
   image: docker:27
-  # No dind service — the runner already has /var/run/docker.sock mounted
   tags:
-    - docker          # ← replace with YOUR runner tag
-  <<: *docker_login
+    - docker
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - *setup_buildx
   script:
-    - echo "Building agent image for tag $CI_COMMIT_TAG"
     - |
-      docker build \
-        --file agent/Dockerfile \
-        --tag "$AGENT_IMAGE:$CI_COMMIT_TAG" \
-        --tag "$AGENT_IMAGE:latest" \
+      echo "Building agent image for tag: $CI_COMMIT_TAG"
+
+      # Always push to GitLab Registry
+      TAGS="-t $AGENT_IMAGE:$CI_COMMIT_TAG -t $AGENT_IMAGE:latest"
+
+      # Push to Docker Hub only for release tags (no -RC in tag name)
+      if ! echo "$CI_COMMIT_TAG" | grep -q -- "-RC"; then
+        echo "Release tag detected — also pushing to Docker Hub"
+        docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_TOKEN"
+        TAGS="$TAGS -t $HUB_AGENT:$CI_COMMIT_TAG -t $HUB_AGENT:latest"
+      else
+        echo "RC tag detected — skipping Docker Hub push"
+      fi
+
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        $TAGS \
+        --push \
+        -f agent/Dockerfile \
         ./agent
-    - docker push "$AGENT_IMAGE:$CI_COMMIT_TAG"
-    - docker push "$AGENT_IMAGE:latest"
-    - echo "Agent image pushed → $AGENT_IMAGE:$CI_COMMIT_TAG"
+
+      echo "Done → $AGENT_IMAGE:$CI_COMMIT_TAG"
   rules:
     - if: $CI_COMMIT_TAG
