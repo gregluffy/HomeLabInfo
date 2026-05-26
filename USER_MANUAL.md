@@ -127,5 +127,5 @@ When an agent is detected:
 
 ---
 
-*Manual Version: 1.0.0.14*  
+*Manual Version: 1.0.0.15*  
 *Last Updated: May 2026*

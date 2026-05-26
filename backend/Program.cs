@@ -1,12 +1,11 @@
 using HomeLabInfo.Api.Data;
+using HomeLabInfo.Api.Middleware;
 using HomeLabInfo.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -16,6 +15,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<NetworkScannerService>();
 builder.Services.AddSingleton<CryptographyService>();
 builder.Services.AddSingleton<WebhookNotificationService>();
+builder.Services.AddSingleton<JwtService>();
 builder.Services.AddHostedService<DhcpListenerService>();
 builder.Services.AddHttpClient();
 builder.Services.AddCors(options =>
@@ -30,6 +30,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors("AllowAll");
+app.UseMiddleware<AuthMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -40,7 +41,6 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 app.MapControllers();
 
-// Ensure the Database directory exists before migrating
 Directory.CreateDirectory("Database");
 
 using (var scope = app.Services.CreateScope())

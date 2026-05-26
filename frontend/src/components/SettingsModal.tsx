@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Bell, Webhook, Save, Send, ShieldCheck, AlertCircle, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 export default function SettingsModal({ 
   isOpen, 
@@ -31,7 +32,7 @@ export default function SettingsModal({
       const keys = ["WebhookUrl", "WebhookProvider", "EnableDhcpListening"];
       const results = await Promise.all(keys.map(async (k) => {
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/${k}`);
+            const res = await apiFetch(`/settings/${k}`);
             if (res.ok) return await res.json();
             return { value: "" };
         } catch {
@@ -59,7 +60,7 @@ export default function SettingsModal({
       ];
 
       await Promise.all(updates.map(u => 
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/${u.key}`, {
+        apiFetch(`/settings/${u.key}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ Value: u.value })
@@ -79,7 +80,7 @@ export default function SettingsModal({
     if (!webhookUrl) return;
     setTestStatus("loading");
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/test`, {
+      const res = await apiFetch(`/settings/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: webhookUrl, provider: provider })

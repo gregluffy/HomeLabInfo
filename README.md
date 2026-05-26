@@ -22,10 +22,11 @@ Discovering and managing your devices is easier than ever with our interactive t
 
 ### Key Features
 
-*   **Instant DHCP Discovery**: Rapidly discover and identify devices the moment they connect and request an IP address, Sending an Webhook to inform you for the new connected client on your network and ensuring your device list is always up-to-date.
+*   **Instant DHCP Discovery**: Rapidly discover and identify devices the moment they connect and request an IP address, sending a webhook to inform you of new clients on your network.
 *   **Intelligent Network Mapping**: Continuously scan and track your homelab infrastructure online and offline statuses.
 *   **Interactive Topology**: View and arrange a visual map of your network structure.
 *   **Container Management**: Manage and monitor your Docker containers across different agents from one central UI.
+*   **Optional Authentication**: Protect your dashboard with a username/password login — disabled by default so existing setups are unaffected.
 *   **Detailed Documentation**: For full setup and usage instructions, refer to our [User Manual](USER_MANUAL.md).
 
 ![Instant DHCP Discovery](assets/dhcp-discovery-settings.png)
@@ -96,6 +97,25 @@ Use this on any machine or VM you want to monitor.
     docker compose -f docker-compose.agent.yml up -d
     ```
 
+## Authentication (Optional)
+
+By default, the dashboard is open with no login required — existing deployments are unaffected.
+
+To enable password protection, add two environment variables to your compose file:
+
+```yaml
+environment:
+  - AUTH_ENABLED=true
+  - JWT_SECRET=change-me-to-a-long-random-secret   # keep this private!
+```
+
+**First-time setup:** On the first visit after enabling auth, the dashboard will redirect you to a setup page where you create your username and password. Passwords are hashed with PBKDF2-SHA256 (100,000 iterations) and tokens are signed with HMAC-SHA256 (24-hour expiry).
+
+> [!TIP]
+> Generate a strong secret with: `openssl rand -base64 32`
+>
+> If `JWT_SECRET` is omitted while `AUTH_ENABLED=true`, a random secret is generated at startup — tokens will be invalidated on container restart.
+
 
 ## Contributing
 
@@ -119,7 +139,7 @@ HomeLabInfo is built for the community. If you have suggestions, feature request
 > Because this application requires `network_mode: host` to perform network scanning, it has direct access to the host's networking stack. This significantly reduces the isolation typically provided by Docker.
 > 
 > *   **Do NOT expose this application directly to the internet.**
-> *   If you need remote access, use a secure VPN (like WireGuard or Tailscale).
+> *   If you need remote access, use a secure VPN (like WireGuard or Tailscale) **or** enable [authentication](#authentication-optional).
 > *   The author provides this software "as is" without any warranties. Users assume all responsibility for any security risks or network issues that may arise from using this tool in their environment.
 
 ## License

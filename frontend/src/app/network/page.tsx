@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import DeviceCard from "../../components/DeviceCard";
 import Link from 'next/link';
 import { Trash2, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Download, Home } from 'lucide-react';
+import { apiFetch } from "@/lib/apiFetch";
 
 interface NetworkDevice {
   id: number;
@@ -34,11 +35,9 @@ export default function NetworkDetails() {
   const [sortField, setSortField] = useState<SortField>('ip');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
-
   const fetchDevices = async () => {
     try {
-      const res = await fetch(`${apiUrl}/scanner/devices`);
+      const res = await apiFetch("/scanner/devices");
       const data = await res.json();
       setDevices(data);
     } catch (err) {
@@ -50,15 +49,15 @@ export default function NetworkDetails() {
     fetchDevices();
     (async () => {
       try {
-        const res = await fetch(`${apiUrl}/settings/BaseIpPrefix`);
+        const res = await apiFetch("/settings/BaseIpPrefix");
         if (res.ok) {
           const data = await res.json();
           if (data.value) setBaseIp(data.value);
         }
-      } catch { /* use default */ }
-      
+      } catch { }
+
       try {
-        const res = await fetch(`${apiUrl}/settings/LivePollingEnabled`);
+        const res = await apiFetch("/settings/LivePollingEnabled");
         if (res.ok) {
           const data = await res.json();
           if (data.value) setIsPolling(data.value === 'true');
@@ -66,7 +65,7 @@ export default function NetworkDetails() {
       } catch { }
 
       try {
-        const res = await fetch(`${apiUrl}/settings/DeepScanEnabled`);
+        const res = await apiFetch("/settings/DeepScanEnabled");
         if (res.ok) {
           const data = await res.json();
           if (data.value) setDeepScan(data.value === 'true');
@@ -77,7 +76,7 @@ export default function NetworkDetails() {
 
   const handlePollingToggle = (enabled: boolean) => {
     setIsPolling(enabled);
-    fetch(`${apiUrl}/settings/LivePollingEnabled`, {
+    apiFetch("/settings/LivePollingEnabled", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value: enabled.toString() })
@@ -86,7 +85,7 @@ export default function NetworkDetails() {
 
   const handleDeepScanToggle = (enabled: boolean) => {
     setDeepScan(enabled);
-    fetch(`${apiUrl}/settings/DeepScanEnabled`, {
+    apiFetch("/settings/DeepScanEnabled", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ value: enabled.toString() })
@@ -105,12 +104,12 @@ export default function NetworkDetails() {
     setIsScanning(true);
     setScanError(null);
     try {
-      await fetch(`${apiUrl}/settings/BaseIpPrefix`, {
+      await apiFetch("/settings/BaseIpPrefix", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ value: baseIp })
       }).catch(() => {});
-      const res = await fetch(`${apiUrl}/scanner/scan?baseIp=${baseIp}&doPortScan=${deepScan}`, { method: "POST" });
+      const res = await apiFetch(`/scanner/scan?baseIp=${baseIp}&doPortScan=${deepScan}`, { method: "POST" });
       if (!res.ok) throw new Error("API Error");
       const data = await res.json();
       setDevices(data);
@@ -138,7 +137,7 @@ export default function NetworkDetails() {
   const handleClear = async () => {
     if (!confirm("Are you sure you want to clear all network device records? This cannot be undone.")) return;
     try {
-      await fetch(`${apiUrl}/scanner/devices/all`, { method: "DELETE" });
+      await apiFetch("/scanner/devices/all", { method: "DELETE" });
       setDevices([]);
     } catch (err) {
       console.error("Failed to clear devices", err);

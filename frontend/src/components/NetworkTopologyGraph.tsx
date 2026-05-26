@@ -26,6 +26,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Server, Router, Download, X, Save, Trash2, Box, Network } from 'lucide-react';
 import { toPng } from 'html-to-image';
+import { apiFetch } from '@/lib/apiFetch';
 
 // Custom Node types
 function MetricBar({ label, used, total, unit, decimals = 0 }: { label: string; used: number; total: number; unit: string; decimals?: number }) {
@@ -180,9 +181,9 @@ function InnerGraph() {
     (async () => {
       try {
         const [ipRes, xRes, yRes] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/DefaultRouterIp`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`)
+          apiFetch("/settings/DefaultRouterIp"),
+          apiFetch("/settings/RouterPosX"),
+          apiFetch("/settings/RouterPosY")
         ]);
 
         if (ipRes.ok) {
@@ -232,8 +233,8 @@ function InnerGraph() {
 
     try {
       const [devicesRes, agentsRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices`).catch((e) => { console.error("Device fetch error", e); return null; }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`).catch((e) => { console.error("Agent fetch error", e); return null; })
+        apiFetch("/scanner/devices").catch((e) => { console.error("Device fetch error", e); return null; }),
+        apiFetch("/agents").catch((e) => { console.error("Agent fetch error", e); return null; })
       ]);
 
       let devices: any[] = [];
@@ -394,7 +395,7 @@ function InnerGraph() {
               try { const url = new URL(a.endpointUrl); agentIp = url.hostname; } catch { return empty; }
 
               // Always fetch stats — we need host metrics regardless of device match
-              const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${a.id}/stats`).catch(() => null);
+              const statsRes = await apiFetch(`/agents/${a.id}/stats`).catch(() => null);
               if (!statsRes || !statsRes.ok) return empty;
 
               let statsData: any;
@@ -604,11 +605,11 @@ function InnerGraph() {
     try {
       if (node.id === 'router') {
         await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosX`, {
+          apiFetch("/settings/RouterPosX", {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: node.position.x.toString() })
           }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/RouterPosY`, {
+          apiFetch("/settings/RouterPosY", {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: node.position.y.toString() })
           })
@@ -620,14 +621,14 @@ function InnerGraph() {
         localStorage.setItem('topology-subnet-positions', JSON.stringify(saved));
       } else if (node.id.startsWith('dev-')) {
         const devId = node.id.replace('dev-', '');
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
+        await apiFetch(`/scanner/devices/${devId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
         });
       } else if (node.id.startsWith('agent-')) {
         const agentId = node.id.replace('agent-', '');
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+        await apiFetch(`/agents/${agentId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ positionX: node.position.x, positionY: node.position.y })
@@ -697,17 +698,16 @@ function InnerGraph() {
     if (!editingNode) return;
     try {
        if (editingNode.id === 'router') {
-          // Save Router IP and Name to settings
-          await fetch(`${process.env.NEXT_PUBLIC_API_URL}/settings/DefaultRouterIp`, {
+          await apiFetch("/settings/DefaultRouterIp", {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ value: editIp })
           });
           setRouterIp(editIp);
-          loadGraph(editIp); // Force immediate reload with new IP
+          loadGraph(editIp);
        } else if (editingNode.id.startsWith('dev-')) {
          const devId = editingNode.id.replace('dev-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, {
+         await apiFetch(`/scanner/devices/${devId}`, {
            method: 'PUT',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ hostName: editName })
@@ -715,7 +715,7 @@ function InnerGraph() {
          loadGraph();
        } else if (editingNode.id.startsWith('agent-')) {
          const agentId = editingNode.id.replace('agent-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, {
+         await apiFetch(`/agents/${agentId}`, {
            method: 'PUT',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ name: editName })
@@ -732,10 +732,10 @@ function InnerGraph() {
     try {
        if (editingNode.id.startsWith('dev-')) {
          const devId = editingNode.id.replace('dev-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/scanner/devices/${devId}`, { method: 'DELETE' });
+         await apiFetch(`/scanner/devices/${devId}`, { method: 'DELETE' });
        } else if (editingNode.id.startsWith('agent-')) {
          const agentId = editingNode.id.replace('agent-', '');
-         await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentId}`, { method: 'DELETE' });
+         await apiFetch(`/agents/${agentId}`, { method: 'DELETE' });
        }
        setEditingNode(null);
        loadGraph(); 

@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import packageJson from "../../package.json";
 import FooterVersionBadge from "@/components/FooterVersionBadge";
+import AuthProvider from "@/components/AuthProvider";
+import LogoutButton from "@/components/LogoutButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,15 +32,19 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="h-screen flex flex-col bg-[#0a0a0a] text-white overflow-hidden">
-        <main className="flex-grow flex flex-col min-h-0">
-          {children}
-        </main>
-        <footer className="py-3 px-6 border-t border-white/5 flex justify-between items-center text-[10px] uppercase tracking-wider text-white/30">
-          <div>HomeLabInfo System</div>
-          <FooterVersionBadge currentVersion={packageJson.version} />
-        </footer>
+        <AuthProvider>
+          <main className="flex-grow flex flex-col min-h-0">
+            {children}
+          </main>
+          <footer className="py-3 px-6 border-t border-white/5 flex justify-between items-center text-[10px] uppercase tracking-wider text-white/30">
+            <div>HomeLabInfo System</div>
+            <div className="flex items-center gap-4">
+              <LogoutButton />
+              <FooterVersionBadge currentVersion={packageJson.version} />
+            </div>
+          </footer>
+        </AuthProvider>
       </body>
     </html>
   );
 }
-
