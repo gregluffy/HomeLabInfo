@@ -24,6 +24,9 @@ services:
       # Optional: change default ports
       # - BACKEND_PORT=9622
       # - FRONTEND_PORT=3000
+      # Optional: enable dashboard authentication
+      # - AUTH_ENABLED=true
+      # - JWT_SECRET=change-me-to-a-long-random-secret
     volumes:
       # Persist the database on the host
       - ./database:/app/backend/Database

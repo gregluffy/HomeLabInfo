@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Plus, Terminal, Copy, Check, Edit2 } from "lucide-react";
+import { apiFetch } from "@/lib/apiFetch";
 
 export default function AddAgentModal({ 
   isOpen, 
@@ -57,7 +58,7 @@ export default function AddAgentModal({
         setName(agentToEdit.name || "");
         setEndpointUrl(agentToEdit.endpointUrl || "");
         // Fetch full agent data including the public key so they can see it again
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentToEdit.id}`)
+        apiFetch(`/agents/${agentToEdit.id}`)
           .then(res => res.json())
           .then(data => setAgentData(data))
           .catch(console.error);
@@ -75,16 +76,16 @@ export default function AddAgentModal({
     try {
       let res;
       if (agentToEdit) {
-        res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agentToEdit.id}`, {
+        res = await apiFetch(`/agents/${agentToEdit.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, endpointUrl }),
         });
         if (!res.ok) throw new Error("Failed to update agent");
         onAdded();
-        onClose(); // Close immediately on edit since key is already known
+        onClose();
       } else {
-        res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`, {
+        res = await apiFetch("/agents", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, endpointUrl }),

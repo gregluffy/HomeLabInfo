@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Server, Activity, HardDrive, Cpu, Box, Plus, Trash2, Edit2, X, Tag } from "lucide-react";
 import AddAgentModal from "./AddAgentModal";
 import { semverGt, fetchLatestRelease, GITHUB_REPO_URL } from "../lib/versionUtils";
+import { apiFetch } from "@/lib/apiFetch";
 
 // ─── Version status helpers ───────────────────────────────────────────────────
 
@@ -59,7 +60,7 @@ export default function AppsSummaryCard() {
   }, []);
 
   const loadAgents = () => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents`)
+    apiFetch("/agents")
       .then((res) => res.json())
       .then((data) => setAgents(data))
       .catch((err) => console.error("Failed to fetch agents", err));
@@ -72,7 +73,7 @@ export default function AppsSummaryCard() {
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to remove this agent?")) return;
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${id}`, { method: "DELETE" });
+      await apiFetch(`/agents/${id}`, { method: "DELETE" });
       loadAgents();
     } catch (err) {
       console.error(err);
@@ -165,7 +166,7 @@ function VmAgentDetails({
 
   // Fetch agent version once on mount — it's static, no need to poll
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}/version`)
+    apiFetch(`/agents/${agent.id}/version`)
       .then((res) => { if (!res.ok) throw new Error(); return res.json(); })
       .then((data) => setAgentVersion(data.version ?? null))
       .catch(() => setAgentVersion(null));
@@ -173,7 +174,7 @@ function VmAgentDetails({
 
   useEffect(() => {
     const fetchStats = () => {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL}/agents/${agent.id}/stats`)
+      apiFetch(`/agents/${agent.id}/stats`)
         .then((res) => {
           if (!res.ok) throw new Error("Agent unreachable");
           return res.json();
