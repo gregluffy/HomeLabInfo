@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { getToken, clearToken, getApiUrl } from "@/lib/apiFetch";
+import { getToken, getApiUrl, getUsername } from "@/lib/apiFetch";
+import { AuthContext } from "@/lib/authContext";
 
 interface AuthStatus {
   authEnabled: boolean;
@@ -10,11 +11,12 @@ interface AuthStatus {
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [username, setUsername] = useState<string | null>(null);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    // /setup never needs a guard — avoids redirect loops
     if (pathname === "/setup") {
       setReady(true);
       return;
@@ -32,15 +34,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
           return;
         }
 
-        // No users yet → always go to setup (even if already on /login)
+        setAuthEnabled(true);
+        setUsername(getUsername());
+
         if (!status.hasUsers) {
           router.replace("/setup");
           return;
         }
 
-        // Users exist and we're on the login page
         if (pathname === "/login") {
-          // Already logged in → bounce to dashboard
           if (getToken()) { router.replace("/"); return; }
           setReady(true);
           return;
@@ -67,5 +69,9 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     );
   }
 
-  return <>{children}</>;
+  return (
+    <AuthContext.Provider value={{ authEnabled, username }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

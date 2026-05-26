@@ -1,31 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { clearToken, getToken, getUsername, getApiUrl } from "@/lib/apiFetch";
+import { useRouter } from "next/navigation";
+import { LogOut, User } from "lucide-react";
+import { clearToken, getToken } from "@/lib/apiFetch";
+import { useAuth } from "@/lib/authContext";
 
 export default function LogoutButton() {
-  const [authEnabled, setAuthEnabled] = useState(false);
-  const [username, setUsername] = useState<string | null>(null);
+  const { authEnabled, username } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    const publicPaths = ["/login", "/setup"];
-    if (publicPaths.includes(pathname)) return;
-
-    (async () => {
-      try {
-        const res = await fetch(`${getApiUrl()}/auth/status`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.authEnabled) {
-            setAuthEnabled(true);
-            setUsername(getUsername());
-          }
-        }
-      } catch { }
-    })();
-  }, [pathname]);
 
   if (!authEnabled || !getToken()) return null;
 
@@ -35,15 +16,21 @@ export default function LogoutButton() {
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 normal-case">
       {username && (
-        <span className="text-white/40 text-[10px] normal-case">{username}</span>
+        <>
+          <User className="w-3 h-3 text-white/40 shrink-0" />
+          <span className="text-white/60 text-[11px] font-medium">{username}</span>
+          <div className="w-px h-3 bg-white/10 shrink-0" />
+        </>
       )}
       <button
         onClick={handleLogout}
-        className="text-white/40 hover:text-white/70 transition-colors text-[10px] uppercase tracking-wider"
+        className="flex items-center gap-1 text-white/50 hover:text-red-400 transition-colors text-[11px]"
+        title="Sign out"
       >
-        Sign out
+        <LogOut className="w-3 h-3 shrink-0" />
+        <span>Sign out</span>
       </button>
     </div>
   );
