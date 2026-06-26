@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Server, Activity, HardDrive, Cpu, Box, Plus, Trash2, Edit2, X, Tag, Gauge, Database } from "lucide-react";
+import { Server, Activity, HardDrive, Box, Plus, Trash2, Edit2, X, Tag, Gauge, Database } from "lucide-react";
 import AddAgentModal from "./AddAgentModal";
 import { semverGt, fetchLatestRelease, GITHUB_REPO_URL } from "../lib/versionUtils";
 import { apiFetch } from "@/lib/apiFetch";
@@ -225,42 +225,36 @@ function VmAgentDetails({
       ) : stats ? (
         <div className="space-y-5 flex-1 relative z-10">
           <div className="grid grid-cols-3 gap-2">
-            {/* CPU — 2 rows */}
+            {/* CPU */}
             <div className="flex flex-col bg-black/30 p-2 sm:p-3 rounded-xl border border-white/5">
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 uppercase tracking-wider">
-                <Cpu className="w-3 h-3"/> CPU
-              </span>
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 mt-auto">
+              <span className="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">CPU</span>
+              <span className="flex items-center gap-1 text-[10px] text-neutral-400">
                 <Gauge className="w-3 h-3"/>
                 <span className="font-mono text-xs font-semibold text-white/90">{stats.host.cpuPercentage.toFixed(1)}%</span>
               </span>
             </div>
-            {/* RAM — 3 rows */}
+            {/* RAM */}
             <div className="flex flex-col bg-black/30 p-2 sm:p-3 rounded-xl border border-white/5">
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 uppercase tracking-wider">
-                <Activity className="w-3 h-3"/> RAM
-              </span>
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 mt-auto">
+              <span className="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">RAM</span>
+              <span className="flex items-center gap-1 text-[10px] text-neutral-400">
                 <Activity className="w-3 h-3"/>
                 <span className="font-mono text-xs font-semibold text-white/90">{(stats.host.memoryUsedMB/1024).toFixed(1)}G</span>
               </span>
               <span className="flex items-center gap-1 text-[10px] text-neutral-400 mt-1">
                 <Database className="w-3 h-3"/>
-                <span className="font-mono text-xs font-semibold text-white/50">{(stats.host.memoryTotalMB/1024).toFixed(1)}G</span>
+                <span className="font-mono text-xs font-semibold text-white/90">{(stats.host.memoryTotalMB/1024).toFixed(1)}G</span>
               </span>
             </div>
-            {/* Disk — 3 rows */}
+            {/* Disk */}
             <div className="flex flex-col bg-black/30 p-2 sm:p-3 rounded-xl border border-white/5">
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 uppercase tracking-wider">
-                <HardDrive className="w-3 h-3"/> Disk
-              </span>
-              <span className="flex items-center gap-1 text-[10px] text-neutral-400 mt-auto">
+              <span className="text-xs font-bold text-neutral-300 uppercase tracking-wider mb-2">Disk</span>
+              <span className="flex items-center gap-1 text-[10px] text-neutral-400">
                 <HardDrive className="w-3 h-3"/>
                 <span className="font-mono text-xs font-semibold text-white/90">{stats.host.diskUsedGB.toFixed(1)}G</span>
               </span>
               <span className="flex items-center gap-1 text-[10px] text-neutral-400 mt-1">
                 <Database className="w-3 h-3"/>
-                <span className="font-mono text-xs font-semibold text-white/50">{stats.host.diskTotalGB.toFixed(1)}G</span>
+                <span className="font-mono text-xs font-semibold text-white/90">{stats.host.diskTotalGB.toFixed(1)}G</span>
               </span>
             </div>
           </div>
