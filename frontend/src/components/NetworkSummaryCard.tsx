@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from 'next/link';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Network } from 'lucide-react';
 import { apiFetch } from "@/lib/apiFetch";
 
 interface NetworkDevice {
@@ -118,6 +118,7 @@ export default function NetworkSummaryCard() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div className="flex items-center gap-4">
           <Link href="/network" className="group flex items-center gap-2">
+              <Network className="w-6 h-6 text-purple-400" />
               <h2 className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">Network</h2>
               <svg className="w-5 h-5 text-neutral-500 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           </Link>
