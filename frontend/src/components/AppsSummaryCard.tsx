@@ -268,13 +268,13 @@ function VmAgentDetails({
                <span className="opacity-0 group-hover/clist:opacity-100 transition-opacity text-[10px] text-indigo-400">View All &rarr;</span>
             </span>
             <div className="flex flex-wrap gap-1.5 text-white/80">
-              {stats.containers?.slice(0, 7).map((c: any) => (
+              {stats.containers?.slice(0, 9).map((c: any) => (
                 <span key={c.id} title={c.name} className="text-xs px-2 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-md truncate max-w-[120px]">
                   {c.name}
                 </span>
               ))}
-              {stats.containers?.length > 7 && (
-                 <span className="text-xs px-2 py-1 bg-white/5 border border-white/10 rounded-md">+{stats.containers.length - 7}</span>
+              {stats.containers?.length > 9 && (
+                 <span className="text-xs px-2 py-1 bg-white/5 border border-white/10 rounded-md">+{stats.containers.length - 9}</span>
               )}
             </div>
           </div>
