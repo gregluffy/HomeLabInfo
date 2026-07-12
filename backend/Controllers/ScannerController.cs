@@ -41,6 +41,12 @@ public class ScannerController : ControllerBase
         foreach(var device in scannedDevices)
         {
             var existing = await _context.Devices.FirstOrDefaultAsync(d => d.IPAddress == device.IPAddress);
+            if (existing == null && !string.IsNullOrEmpty(device.MacAddress))
+            {
+                // Devices first seen via DHCP may have no IP (or a stale one) recorded yet
+                existing = await _context.Devices.FirstOrDefaultAsync(d => d.MacAddress == device.MacAddress);
+                if (existing != null) existing.IPAddress = device.IPAddress;
+            }
             if (existing != null)
             {
                 existing.HostName = device.HostName != "Unknown" ? device.HostName : existing.HostName;
