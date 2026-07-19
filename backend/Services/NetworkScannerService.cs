@@ -12,6 +12,8 @@ namespace HomeLabInfo.Api.Services;
 
 public class NetworkScannerService
 {
+    private static readonly TimeSpan DnsLookupTimeout = TimeSpan.FromSeconds(2);
+
     private readonly ILogger<NetworkScannerService> _logger;
 
     public NetworkScannerService(ILogger<NetworkScannerService> logger)
@@ -25,22 +27,18 @@ public class NetworkScannerService
         var mdnsTask = DiscoverMdnsHostsAsync();
         var scanTasks = new List<Task>();
 
+        var prefixes = NormalizePrefixes(baseIps);
+
         bool arpScanUsed = false;
         var arpScanResults = new Dictionary<string, string>(); // IP -> MAC
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            foreach (var baseIp in baseIps)
+            foreach (var prefix in prefixes.Where(p => p.Count(c => c == '.') == 3))
             {
-                var rawPrefix = baseIp.Trim();
-                if (string.IsNullOrWhiteSpace(rawPrefix)) continue;
-                if (rawPrefix.Contains("/")) rawPrefix = rawPrefix.Split('/')[0];
-                var ipParts = rawPrefix.Split('.');
-                if (ipParts.Length < 3) continue;
-                
-                string subnetToScan = $"{ipParts[0]}.{ipParts[1]}.{ipParts[2]}.0/24";
+                string subnetToScan = $"{prefix}0/24";
                 string interfaceArg = !string.IsNullOrWhiteSpace(scanInterface) ? $"-I {scanInterface}" : "";
-                
+
                 try
                 {
                     string output = await RunProcessAsync("arp-scan", $"{interfaceArg} {subnetToScan} -q");
@@ -63,25 +61,8 @@ public class NetworkScannerService
             }
         }
 
-        foreach (var baseIp in baseIps)
+        foreach (var prefix in prefixes)
         {
-            var rawPrefix = baseIp.Trim();
-            if (string.IsNullOrWhiteSpace(rawPrefix)) continue;
-            
-            // Normalize CIDR and full IPs to a prefix
-            if (rawPrefix.Contains("/")) rawPrefix = rawPrefix.Split('/')[0];
-            var ipParts = rawPrefix.Split('.');
-            string prefix = rawPrefix;
-            
-            if (ipParts.Length >= 3)
-            {
-                prefix = $"{ipParts[0]}.{ipParts[1]}.{ipParts[2]}.";
-            }
-            else if (!prefix.EndsWith("."))
-            {
-                prefix += ".";
-            }
-
             if (arpScanUsed)
             {
                 // Process IPs discovered by arp-scan
@@ -102,36 +83,105 @@ public class NetworkScannerService
         }
 
         await Task.WhenAll(scanTasks);
-        var mdnsNames = await mdnsTask;
 
+        // The ping sweep itself refreshes the OS ARP cache, so this is read afterwards:
+        // hosts that dropped our ICMP echo still answered the underlying ARP request.
         var arpTable = await GetArpTableAsync();
 
+        if (!arpScanUsed)
+        {
+            var foundIps = foundHostsBag.Select(h => h.IPAddress).ToHashSet();
+            var arpOnlyTasks = arpTable
+                .Where(e => !foundIps.Contains(e.Key)
+                            && prefixes.Any(p => e.Key.StartsWith(p))
+                            && IsUsableArpEntry(e.Key, e.Value))
+                .Select(e => Task.Run(() => ProcessDiscoveredDeviceAsync(e.Key, e.Value, foundHostsBag, doPortScan)))
+                .ToList();
+            await Task.WhenAll(arpOnlyTasks);
+        }
+
+        var mdnsNames = await mdnsTask;
+
         var sortedHosts = foundHostsBag
-            .OrderBy(h => int.Parse(h.IPAddress.Split('.').Last()))
+            .OrderBy(h => IpSortKey(h.IPAddress))
             .ToList();
 
         foreach (var host in sortedHosts)
         {
-            if (arpTable.TryGetValue(host.IPAddress, out var mac))
+            if (string.IsNullOrEmpty(host.MacAddress) && arpTable.TryGetValue(host.IPAddress, out var mac))
             {
                 host.MacAddress = mac;
             }
 
-            if (mdnsNames.ContainsKey(host.IPAddress))
+            if (mdnsNames.TryGetValue(host.IPAddress, out var mdnsName))
             {
-                host.HostName = $"{mdnsNames[host.IPAddress]} (mDNS)";
+                host.HostName = $"{mdnsName} (mDNS)";
+            }
+            else if (IsUnknownName(host.HostName) && !string.IsNullOrEmpty(host.MacAddress) && !IsRandomizedMac(host.MacAddress))
+            {
+                var vendor = OuiVendorLookup.Find(host.MacAddress);
+                if (vendor != null) host.HostName = $"Unknown ({vendor})";
             }
         }
 
         return sortedHosts;
     }
+
+    private static List<string> NormalizePrefixes(List<string> baseIps)
+    {
+        var prefixes = new List<string>();
+        foreach (var baseIp in baseIps)
+        {
+            var raw = baseIp.Trim();
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+
+            // Normalize CIDR and full IPs to a "a.b.c." prefix
+            if (raw.Contains('/')) raw = raw.Split('/')[0];
+            var parts = raw.Split('.');
+            string prefix = parts.Length >= 3
+                ? $"{parts[0]}.{parts[1]}.{parts[2]}."
+                : raw.EndsWith(".") ? raw : raw + ".";
+
+            if (!prefixes.Contains(prefix)) prefixes.Add(prefix);
+        }
+        return prefixes;
+    }
+
+    private static bool IsUnknownName(string name) =>
+        string.IsNullOrWhiteSpace(name) || name == "Unknown";
+
+    // The locally-administered bit marks randomized/private MACs, whose OUI is meaningless.
+    private static bool IsRandomizedMac(string mac) =>
+        mac.Length >= 2 && Uri.IsHexDigit(mac[0]) && Uri.IsHexDigit(mac[1])
+        && (Convert.ToInt32(mac[..2], 16) & 0x02) != 0;
+
+    private static bool IsUsableArpEntry(string ip, string mac)
+    {
+        // Network/broadcast addresses and multicast/incomplete entries are ARP-cache
+        // noise, not devices.
+        if (ip.EndsWith(".0") || ip.EndsWith(".255")) return false;
+        if (mac is "00:00:00:00:00:00" or "FF:FF:FF:FF:FF:FF") return false;
+        if (mac.Length < 2 || !Uri.IsHexDigit(mac[0]) || !Uri.IsHexDigit(mac[1])) return false;
+        return (Convert.ToInt32(mac[..2], 16) & 0x01) == 0; // multicast bit
+    }
+
+    private static uint IpSortKey(string ip)
+    {
+        if (!IPAddress.TryParse(ip, out var addr) || addr.AddressFamily != AddressFamily.InterNetwork)
+        {
+            return uint.MaxValue;
+        }
+        var b = addr.GetAddressBytes();
+        return ((uint)b[0] << 24) | ((uint)b[1] << 16) | ((uint)b[2] << 8) | b[3];
+    }
+
     private async Task ProcessDiscoveredDeviceAsync(string ipAddress, string macAddress, ConcurrentBag<NetworkDevice> listToAdd, bool doPortScan)
     {
         try
         {
             string hostName = await GetHostNameAsync(ipAddress);
 
-            if (doPortScan && (hostName == "Unknown" || string.IsNullOrWhiteSpace(hostName)))
+            if (doPortScan && IsUnknownName(hostName))
             {
                 hostName = await TryIdentifyViaPortsAsync(ipAddress);
             }
@@ -162,7 +212,7 @@ public class NetworkScannerService
             {
                 string hostName = await GetHostNameAsync(ipAddress);
 
-                if (doPortScan && (hostName == "Unknown" || string.IsNullOrWhiteSpace(hostName)))
+                if (doPortScan && IsUnknownName(hostName))
                 {
                     hostName = await TryIdentifyViaPortsAsync(ipAddress);
                 }
@@ -237,7 +287,9 @@ public class NetworkScannerService
     {
         try
         {
-            var entry = await Dns.GetHostEntryAsync(ipAddress);
+            // Without a timeout, one unresponsive resolver stalls the whole host's result.
+            using var cts = new CancellationTokenSource(DnsLookupTimeout);
+            var entry = await Dns.GetHostEntryAsync(ipAddress, cts.Token);
             return entry.HostName;
         }
         catch
