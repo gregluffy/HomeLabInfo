@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.0.0.17</Version>
+    <Version>1.0.0.18</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +12,10 @@
     <Content Remove="Tests\**" />
     <EmbeddedResource Remove="Tests\**" />
     <None Remove="Tests\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\oui.tsv" />
   </ItemGroup>
 
   <ItemGroup>

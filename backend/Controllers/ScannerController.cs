@@ -41,9 +41,22 @@ public class ScannerController : ControllerBase
         foreach(var device in scannedDevices)
         {
             var existing = await _context.Devices.FirstOrDefaultAsync(d => d.IPAddress == device.IPAddress);
+            if (existing == null && !string.IsNullOrEmpty(device.MacAddress))
+            {
+                // Devices first seen via DHCP may have no IP (or a stale one) recorded yet
+                existing = await _context.Devices.FirstOrDefaultAsync(d => d.MacAddress == device.MacAddress);
+                if (existing != null) existing.IPAddress = device.IPAddress;
+            }
             if (existing != null)
             {
-                existing.HostName = device.HostName != "Unknown" ? device.HostName : existing.HostName;
+                // Vendor-derived names ("Unknown (Apple, Inc.)") only fill in blanks;
+                // they must not replace a resolved or user-assigned hostname.
+                bool scannedIsVendorOnly = device.HostName.StartsWith("Unknown (");
+                bool existingIsUnknown = string.IsNullOrWhiteSpace(existing.HostName) || existing.HostName == "Unknown";
+                if (device.HostName != "Unknown" && (!scannedIsVendorOnly || existingIsUnknown))
+                {
+                    existing.HostName = device.HostName;
+                }
                 existing.MacAddress = !string.IsNullOrEmpty(device.MacAddress) ? device.MacAddress : existing.MacAddress;
                 existing.Status = "Online";
                 existing.LastSeen = DateTime.UtcNow;

@@ -42,11 +42,14 @@ HomeLabInfo includes a specialized listener that monitors your network for DHCP 
 ### 3.1 Real-Time Discovery
 When a new device joins your network:
 1.  The app captures the DHCP broadcast.
-2.  It immediately identifies the device's MAC address and hostname.
-3.  The device is added to your dashboard instantly, even before a full network scan is performed.
+2.  It immediately identifies the device's MAC address, hostname, and current IP.
+3.  The manufacturer is looked up from the device's MAC address using the built-in IEEE OUI registry (e.g. "Raspberry Pi", "Espressif"). Phones and tablets using randomized/private MAC addresses are flagged as such instead.
+4.  The device is added to your dashboard instantly, even before a full network scan is performed.
+
+Devices that use randomized MAC addresses are recognized across reconnects by their hostname, so they don't pile up as duplicates.
 
 ### 3.2 Webhook Notifications
-You can configure a Webhook URL in the settings to receive instant alerts (e.g., via Discord, Slack, or Gotify) whenever a new client is discovered via DHCP. This is perfect for monitoring for unauthorized devices or seeing exactly when your servers reboot.
+You can configure a Webhook URL in the settings to receive instant alerts (e.g., via Discord, Slack, or Gotify) whenever a new client is discovered via DHCP. This is perfect for monitoring for unauthorized devices or seeing exactly when your servers reboot. Alerts include the hostname, MAC address, manufacturer, IP, and the device's DHCP vendor class (e.g. `android-dhcp-14`) when available.
 
 ---
 
@@ -184,5 +187,5 @@ openssl rand -base64 32
 
 ---
 
-*Manual Version: 1.0.0.17*  
-*Last Updated: June 2026*
+*Manual Version: 1.0.0.18*  
+*Last Updated: July 2026*

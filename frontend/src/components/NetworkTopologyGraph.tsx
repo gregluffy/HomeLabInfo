@@ -252,9 +252,15 @@ function InnerGraph() {
         ? devices.filter((d: any) => d.ipAddress !== activeRouterIp)
         : [];
 
+      // Devices without a parseable IP yet (e.g. just discovered via a DHCP
+      // DISCOVER that carried no address) hang directly off the router;
+      // grouping them would create a bogus "" subnet.
+      const hasParseableIp = (d: any) => /^\d{1,3}(\.\d{1,3}){3}$/.test(d.ipAddress ?? '');
+
       // Group by first 3 octets: "192.168.1"
       const subnetMap = new Map<string, any[]>();
       for (const d of filteredDevices) {
+        if (!hasParseableIp(d)) continue;
         const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
         if (!subnetMap.has(prefix)) subnetMap.set(prefix, []);
         subnetMap.get(prefix)!.push(d);
@@ -322,9 +328,11 @@ function InnerGraph() {
 
       // ── Add device nodes ──────────────────────────────────────────────────
       if (Array.isArray(devices)) {
+        let orphanIndex = 0;
         filteredDevices.forEach((d: any, index: number) => {
           const id = `dev-${d.id}`;
-          const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
+          const orphan = !hasParseableIp(d);
+          const prefix = orphan ? '' : d.ipAddress.split('.').slice(0, 3).join('.');
           const subnetId = `subnet-${prefix}`;
           const subnetDevices = subnetMap.get(prefix) ?? [];
           const subnetIndex = subnetDevices.findIndex((sd: any) => sd.id === d.id);
@@ -332,7 +340,12 @@ function InnerGraph() {
           let defaultX: number;
           let defaultY: number;
 
-          if (multiSubnet) {
+          if (orphan) {
+            // Fan out beside the router until a scan or DHCP renewal fills in the IP
+            defaultX = routerPos.x + 350 + orphanIndex * DEV_SPACING_X;
+            defaultY = routerPos.y;
+            orphanIndex++;
+          } else if (multiSubnet) {
             // Use saved subnet position if available; otherwise use computed centre
             const savedSubnetX = savedSubnetPositions[subnetId]?.x;
             const subnetCenterX = savedSubnetX != null
@@ -356,10 +369,10 @@ function InnerGraph() {
             id,
             type: 'device',
             position: { x: d.positionX ?? defaultX, y: d.positionY ?? defaultY },
-            data: { label: d.hostName || d.macAddress || 'Unknown Device', ip: d.ipAddress, status: d.status, rawDevice: d }
+            data: { label: d.hostName || d.macAddress || 'Unknown Device', ip: orphan ? 'No IP yet' : d.ipAddress, status: d.status, rawDevice: d }
           });
 
-          const edgeSource = multiSubnet ? subnetId : 'router';
+          const edgeSource = (!orphan && multiSubnet) ? subnetId : 'router';
           initialEdges.push({
             id: `e-${edgeSource}-${id}`,
             source: edgeSource,
@@ -378,7 +391,7 @@ function InnerGraph() {
         for (const n of initialNodes) {
           if (!n.id.startsWith('dev-')) continue;
           const d = filteredDevices.find((fd: any) => `dev-${fd.id}` === n.id);
-          if (!d) continue;
+          if (!d || !hasParseableIp(d)) continue;
           const prefix = d.ipAddress.split('.').slice(0, 3).join('.');
           const nodeY = n.position.y;
           subnetMaxDeviceY.set(prefix, Math.max(subnetMaxDeviceY.get(prefix) ?? 0, nodeY));
