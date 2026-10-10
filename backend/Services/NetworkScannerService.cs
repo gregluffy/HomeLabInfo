@@ -34,7 +34,9 @@ public class NetworkScannerService
 
         var prefixes = NormalizePrefixes(baseIps);
 
-        bool arpScanUsed = false;
+        // Prefixes arp-scan actually found hosts in. Anything else falls back to a ping sweep:
+        // a run on the wrong interface "succeeds" with zero replies.
+        var arpScannedPrefixes = new HashSet<string>();
         var arpScanResults = new Dictionary<string, string>(); // IP -> MAC
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -48,8 +50,17 @@ public class NetworkScannerService
 
             foreach (var prefix in prefixes)
             {
+                // Without -I, arp-scan uses the first interface that is up, which on hosts with
+                // bridges or several NICs is often not the one on this subnet.
+                string? iface = useInterface ? scanInterface : FindInterfaceForPrefix(prefix);
+                if (iface == null)
+                {
+                    // No local interface on this subnet (e.g. a routed VLAN): ARP can't cross a
+                    // router, so leave it to the ping sweep.
+                    continue;
+                }
                 var args = new List<string>();
-                if (useInterface) args.AddRange(["-I", scanInterface!]);
+                args.AddRange(["-I", iface]);
                 args.AddRange([$"{prefix}0/24", "-q"]);
 
                 try
@@ -57,13 +68,18 @@ public class NetworkScannerService
                     string output = await RunProcessAsync("arp-scan", args);
                     if (!string.IsNullOrWhiteSpace(output) && output.Contains("Starting arp-scan"))
                     {
-                        arpScanUsed = true;
                         var matches = Regex.Matches(output, @"(?<ip>\d{1,3}(\.\d{1,3}){3})\s+(?<mac>([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2}))");
                         foreach (Match match in matches)
                         {
                             var ip = match.Groups["ip"].Value;
                             var mac = match.Groups["mac"].Value.Replace('-', ':').ToUpperInvariant();
                             arpScanResults[ip] = mac;
+                            if (ip.StartsWith(prefix)) arpScannedPrefixes.Add(prefix);
+                        }
+                        if (!arpScannedPrefixes.Contains(prefix))
+                        {
+                            _logger.LogWarning("arp-scan found no hosts in {Prefix}0/24 on interface {Interface}; falling back to ping sweep.",
+                                prefix, iface);
                         }
                     }
                 }
@@ -76,7 +92,7 @@ public class NetworkScannerService
 
         foreach (var prefix in prefixes)
         {
-            if (arpScanUsed)
+            if (arpScannedPrefixes.Contains(prefix))
             {
                 // Process IPs discovered by arp-scan
                 foreach (var ip in arpScanResults.Keys.Where(k => k.StartsWith(prefix)))
@@ -101,12 +117,13 @@ public class NetworkScannerService
         // hosts that dropped our ICMP echo still answered the underlying ARP request.
         var arpTable = await GetArpTableAsync();
 
-        if (!arpScanUsed)
+        var pingSweptPrefixes = prefixes.Where(p => !arpScannedPrefixes.Contains(p)).ToList();
+        if (pingSweptPrefixes.Count > 0)
         {
             var foundIps = foundHostsBag.Select(h => h.IPAddress).ToHashSet();
             var arpOnlyTasks = arpTable
                 .Where(e => !foundIps.Contains(e.Key)
-                            && prefixes.Any(p => e.Key.StartsWith(p))
+                            && pingSweptPrefixes.Any(p => e.Key.StartsWith(p))
                             && IsUsableArpEntry(e.Key, e.Value))
                 .Select(e => Task.Run(() => ProcessDiscoveredDeviceAsync(e.Key, e.Value, foundHostsBag, doPortScan)))
                 .ToList();
@@ -164,6 +181,23 @@ public class NetworkScannerService
             if (!prefixes.Contains(prefix)) prefixes.Add(prefix);
         }
         return prefixes;
+    }
+
+    /// <summary>Returns the name of the (not down) interface holding an IPv4 address in the given "a.b.c." prefix.</summary>
+    private static string? FindInterfaceForPrefix(string prefix)
+    {
+        try
+        {
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus != OperationalStatus.Down && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .FirstOrDefault(n => n.GetIPProperties().UnicastAddresses.Any(a =>
+                    a.Address.AddressFamily == AddressFamily.InterNetwork && a.Address.ToString().StartsWith(prefix)))
+                ?.Name;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static bool IsUnknownName(string name) =>
