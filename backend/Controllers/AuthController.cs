@@ -28,7 +28,7 @@ public class AuthController(AppDbContext db, JwtService jwtService, IConfigurati
         if (await db.Users.AnyAsync())
             return Conflict(new { error = "An account already exists. Please log in." });
 
-        if (string.IsNullOrWhiteSpace(req.Username) || req.Username.Length < 3)
+        if (string.IsNullOrWhiteSpace(req.Username) || req.Username.Trim().Length < 3)
             return BadRequest(new { error = "Username must be at least 3 characters." });
 
         if (string.IsNullOrWhiteSpace(req.Password) || req.Password.Length < 8)
@@ -54,7 +54,11 @@ public class AuthController(AppDbContext db, JwtService jwtService, IConfigurati
         if (!AuthEnabled)
             return BadRequest(new { error = "Authentication is not enabled." });
 
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == req.Username.Trim());
+        if (string.IsNullOrWhiteSpace(req.Username) || string.IsNullOrEmpty(req.Password))
+            return Unauthorized(new { error = "Invalid username or password." });
+
+        var username = req.Username.Trim();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Username == username);
         if (user == null || !JwtService.VerifyPassword(req.Password, user.PasswordHash))
             return Unauthorized(new { error = "Invalid username or password." });
 

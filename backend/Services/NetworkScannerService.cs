@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -13,6 +14,10 @@ namespace HomeLabInfo.Api.Services;
 public class NetworkScannerService
 {
     private static readonly TimeSpan DnsLookupTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan ProcessTimeout = TimeSpan.FromSeconds(60);
+
+    // Linux interface names: max 15 chars, no leading '-' so it can't be read as an arp-scan option.
+    private static readonly Regex InterfaceNameRegex = new(@"^[A-Za-z0-9][A-Za-z0-9_.:@-]{0,14}$");
 
     private readonly ILogger<NetworkScannerService> _logger;
 
@@ -34,14 +39,22 @@ public class NetworkScannerService
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            foreach (var prefix in prefixes.Where(p => p.Count(c => c == '.') == 3))
+            bool useInterface = !string.IsNullOrWhiteSpace(scanInterface);
+            if (useInterface && !InterfaceNameRegex.IsMatch(scanInterface!))
             {
-                string subnetToScan = $"{prefix}0/24";
-                string interfaceArg = !string.IsNullOrWhiteSpace(scanInterface) ? $"-I {scanInterface}" : "";
+                _logger.LogWarning("Ignoring invalid ScanInterface setting {Interface}", scanInterface);
+                useInterface = false;
+            }
+
+            foreach (var prefix in prefixes)
+            {
+                var args = new List<string>();
+                if (useInterface) args.AddRange(["-I", scanInterface!]);
+                args.AddRange([$"{prefix}0/24", "-q"]);
 
                 try
                 {
-                    string output = await RunProcessAsync("arp-scan", $"{interfaceArg} {subnetToScan} -q");
+                    string output = await RunProcessAsync("arp-scan", args);
                     if (!string.IsNullOrWhiteSpace(output) && output.Contains("Starting arp-scan"))
                     {
                         arpScanUsed = true;
@@ -127,7 +140,11 @@ public class NetworkScannerService
         return sortedHosts;
     }
 
-    private static List<string> NormalizePrefixes(List<string> baseIps)
+    /// <summary>
+    /// Normalizes user input ("192.168.1.", "192.168.1.0/24", "192.168.1.42") to "a.b.c." /24
+    /// prefixes, dropping anything that isn't three valid IPv4 octets.
+    /// </summary>
+    public static List<string> NormalizePrefixes(IEnumerable<string> baseIps)
     {
         var prefixes = new List<string>();
         foreach (var baseIp in baseIps)
@@ -138,9 +155,11 @@ public class NetworkScannerService
             // Normalize CIDR and full IPs to a "a.b.c." prefix
             if (raw.Contains('/')) raw = raw.Split('/')[0];
             var parts = raw.Split('.');
-            string prefix = parts.Length >= 3
-                ? $"{parts[0]}.{parts[1]}.{parts[2]}."
-                : raw.EndsWith(".") ? raw : raw + ".";
+            if (parts.Length < 3 || !parts.Take(3).All(o => byte.TryParse(o, NumberStyles.None, CultureInfo.InvariantCulture, out _)))
+            {
+                continue;
+            }
+            string prefix = $"{byte.Parse(parts[0])}.{byte.Parse(parts[1])}.{byte.Parse(parts[2])}.";
 
             if (!prefixes.Contains(prefix)) prefixes.Add(prefix);
         }
@@ -331,7 +350,7 @@ public class NetworkScannerService
             string output = string.Empty;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                output = await RunProcessAsync("arp", "-a");
+                output = await RunProcessAsync("arp", ["-a"]);
                 // Regex for Windows format: 192.168.1.1       00-14-22-01-23-45
                 var matches = Regex.Matches(output, @"(?<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s+(?<mac>([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2}))");
                 foreach (Match match in matches)
@@ -357,7 +376,7 @@ public class NetworkScannerService
                 }
                 else
                 {
-                     output = await RunProcessAsync("arp", "-a");
+                     output = await RunProcessAsync("arp", ["-a"]);
                      var matches = Regex.Matches(output, @"(?<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}).*?(?<mac>([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2}))");
                      foreach (Match match in matches)
                      {
@@ -376,22 +395,34 @@ public class NetworkScannerService
         return arpTable;
     }
 
-    private async Task<string> RunProcessAsync(string filename, string arguments)
+    private async Task<string> RunProcessAsync(string filename, IEnumerable<string> arguments)
     {
+        // ArgumentList passes each value as a single argv entry, so user-supplied
+        // values can't be split into extra arguments.
         var psi = new ProcessStartInfo
         {
             FileName = filename,
-            Arguments = arguments,
             RedirectStandardOutput = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        foreach (var arg in arguments) psi.ArgumentList.Add(arg);
 
         using var process = Process.Start(psi);
         if (process == null) return string.Empty;
 
-        var output = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        return output;
+        using var cts = new CancellationTokenSource(ProcessTimeout);
+        try
+        {
+            var output = await process.StandardOutput.ReadToEndAsync(cts.Token);
+            await process.WaitForExitAsync(cts.Token);
+            return output;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("{Process} timed out after {Timeout}; killing it.", filename, ProcessTimeout);
+            process.Kill(entireProcessTree: true);
+            return string.Empty;
+        }
     }
 }

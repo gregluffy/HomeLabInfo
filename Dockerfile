@@ -17,7 +17,7 @@ COPY backend/ .
 RUN dotnet publish "HomeLabInfo.Api.csproj" -c Release -o /app/backend/publish
 
 # ---------- Stage 2: Build the Next.js Frontend ----------
-FROM --platform=$BUILDPLATFORM node:20-alpine AS frontend-build
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-build
 RUN apk add --no-cache libc6-compat
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
@@ -36,11 +36,11 @@ RUN npm run build
 # ---------- Stage 3: Final Runtime Image ----------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
-# Install Node.js (for Next.js standalone server) + network tools (for backend ARP/ping)
+# Install Node.js (for Next.js standalone server) + network tools (for backend ARP/ping/arp-scan)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      curl net-tools iputils-ping && \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+      curl net-tools iputils-ping arp-scan && \
+    curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     rm -rf /var/lib/apt/lists/*
 

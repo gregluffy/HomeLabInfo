@@ -73,16 +73,19 @@ public class MetricsService
             {
                 var procMem = File.Exists("/host/proc/meminfo") ? "/host/proc/meminfo" : "/proc/meminfo";
                 var lines = File.ReadAllLines(procMem);
-                double total = 0, free = 0, buffers = 0, cached = 0;
+                double total = 0, free = 0, buffers = 0, cached = 0, available = -1;
                 foreach (var line in lines)
                 {
                     if (line.StartsWith("MemTotal:")) total = ParseMemStr(line);
                     else if (line.StartsWith("MemFree:")) free = ParseMemStr(line);
                     else if (line.StartsWith("Buffers:")) buffers = ParseMemStr(line);
                     else if (line.StartsWith("Cached:")) cached = ParseMemStr(line);
+                    else if (line.StartsWith("MemAvailable:")) available = ParseMemStr(line);
                 }
-                
-                double used = total - free - buffers - cached;
+
+                // MemAvailable (kernel 3.14+) also accounts for reclaimable slab and
+                // non-reclaimable cache, which the free+buffers+cached estimate gets wrong.
+                double used = available >= 0 ? total - available : total - free - buffers - cached;
                 return (total / 1024.0, used / 1024.0); // Convert KB to MB
             }
             catch {}
