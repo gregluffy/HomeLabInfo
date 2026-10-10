@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { X, Bell, Webhook, Save, Send, ShieldCheck, AlertCircle, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { X, Bell, Webhook, Save, Send, ShieldCheck, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { apiFetch } from "@/lib/apiFetch";
 
 export default function SettingsModal({ 
@@ -19,12 +19,6 @@ export default function SettingsModal({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showWebhook, setShowWebhook] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchSettings();
-    }
-  }, [isOpen]);
 
   const fetchSettings = async () => {
     setIsLoading(true);
@@ -50,6 +44,12 @@ export default function SettingsModal({
     }
   };
 
+  useEffect(() => {
+    if (isOpen) {
+      fetchSettings();
+    }
+  }, [isOpen]);
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -59,14 +59,15 @@ export default function SettingsModal({
         { key: "EnableDhcpListening", value: enableDhcp.toString() }
       ];
 
-      await Promise.all(updates.map(u => 
+      const responses = await Promise.all(updates.map(u =>
         apiFetch(`/settings/${u.key}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ Value: u.value })
         })
       ));
-      
+      if (responses.some(r => !r.ok)) throw new Error("One or more settings failed to save");
+
       onClose();
     } catch (err) {
       console.error("Failed to save settings", err);

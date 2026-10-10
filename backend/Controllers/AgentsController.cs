@@ -12,11 +12,13 @@ public class AgentsController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly CryptographyService _crypto;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public AgentsController(AppDbContext context, CryptographyService crypto)
+    public AgentsController(AppDbContext context, CryptographyService crypto, IHttpClientFactory httpClientFactory)
     {
         _context = context;
         _crypto = crypto;
+        _httpClientFactory = httpClientFactory;
     }
 
     [HttpGet]
@@ -97,13 +99,16 @@ public class AgentsController : ControllerBase
         string timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         string signature = _crypto.SignTimestamp(agent.PrivateKeyBase64, timestamp);
         
-        using var client = new HttpClient();
-        client.DefaultRequestHeaders.Add("X-Hub-Signature", signature);
-        client.DefaultRequestHeaders.Add("X-Hub-Timestamp", timestamp);
-        
+        var client = _httpClientFactory.CreateClient();
+        // An unreachable agent must not hold the request open for the default 100s.
+        client.Timeout = TimeSpan.FromSeconds(10);
+
         try
         {
-            var response = await client.GetAsync($"{agent.EndpointUrl}/api/stats");
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{agent.EndpointUrl}/api/stats");
+            request.Headers.Add("X-Hub-Signature", signature);
+            request.Headers.Add("X-Hub-Timestamp", timestamp);
+            using var response = await client.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var jsonStr = await response.Content.ReadAsStringAsync();
             return Content(jsonStr, "application/json");
@@ -120,13 +125,13 @@ public class AgentsController : ControllerBase
         var agent = await _context.VmAgents.FindAsync(id);
         if (agent == null) return NotFound("Agent not found");
 
-        using var client = new HttpClient();
+        var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(5);
 
         try
         {
             // /api/version is unauthenticated on the agent — no signed headers needed.
-            var response = await client.GetAsync($"{agent.EndpointUrl}/api/version");
+            using var response = await client.GetAsync($"{agent.EndpointUrl}/api/version");
             response.EnsureSuccessStatusCode();
             var jsonStr = await response.Content.ReadAsStringAsync();
             return Content(jsonStr, "application/json");

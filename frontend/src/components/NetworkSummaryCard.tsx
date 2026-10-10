@@ -23,8 +23,9 @@ export default function NetworkSummaryCard() {
   const fetchDevices = async () => {
     try {
       const res = await apiFetch("/scanner/devices");
+      if (!res.ok) return;
       const data = await res.json();
-      setDevices(data);
+      if (Array.isArray(data)) setDevices(data);
     } catch (err) {
       console.error("Failed to fetch devices", err);
     }
@@ -89,7 +90,7 @@ export default function NetworkSummaryCard() {
         body: JSON.stringify({ value: baseIp })
       }).catch(() => {});
 
-      const res = await apiFetch(`/scanner/scan?baseIp=${baseIp}&doPortScan=${deepScan}`, { method: "POST" });
+      const res = await apiFetch(`/scanner/scan?baseIp=${encodeURIComponent(baseIp)}&doPortScan=${deepScan}`, { method: "POST" });
       if (!res.ok) throw new Error("API request failed");
       const data = await res.json();
       setDevices(data);

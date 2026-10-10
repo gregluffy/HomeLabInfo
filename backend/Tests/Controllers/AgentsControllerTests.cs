@@ -4,6 +4,7 @@ using HomeLabInfo.Api.Data;
 using HomeLabInfo.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HomeLabInfo.Api.Tests.Controllers;
 
@@ -21,7 +22,12 @@ public class AgentsControllerTests : IDisposable
 
     public void Dispose() => _db.Dispose();
 
-    private AgentsController Ctrl() => new(_db, _crypto);
+    private readonly IHttpClientFactory _httpClientFactory = new ServiceCollection()
+        .AddHttpClient()
+        .BuildServiceProvider()
+        .GetRequiredService<IHttpClientFactory>();
+
+    private AgentsController Ctrl() => new(_db, _crypto, _httpClientFactory);
 
     private static JsonElement ToJson(object? value) =>
         JsonDocument.Parse(JsonSerializer.Serialize(value)).RootElement;

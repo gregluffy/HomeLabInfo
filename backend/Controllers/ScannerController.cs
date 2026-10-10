@@ -32,8 +32,11 @@ public class ScannerController : ControllerBase
         var interfaceSetting = await _context.Settings.FindAsync("ScanInterface");
         string? scanInterface = interfaceSetting?.Value;
 
-        var prefixes = baseIp.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-        
+        var prefixes = NetworkScannerService.NormalizePrefixes(
+            baseIp.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        if (prefixes.Count == 0)
+            return BadRequest(new { error = "baseIp must contain at least one IPv4 /24 prefix, e.g. 192.168.1." });
+
         // For simplicity, we block and scan. In a production scenario, we'd run this via a BackgroundService.
         var scannedDevices = await _scannerService.ScanNetworkAsync(prefixes, doPortScan, scanInterface);
 

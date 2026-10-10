@@ -14,13 +14,14 @@ public class WebhookNotificationService
         _logger = logger;
     }
 
-    public async Task SendNotificationAsync(string url, string provider, string title, string message)
+    /// <summary>Sends a webhook; returns false (after logging) if it could not be delivered.</summary>
+    public async Task<bool> SendNotificationAsync(string url, string provider, string title, string message)
     {
-        if (string.IsNullOrWhiteSpace(url)) return;
+        if (string.IsNullOrWhiteSpace(url)) return false;
 
         string fullMessage = $"**[{title}]**\n{message}";
 
-        object payload = provider.ToLower() switch
+        object payload = (provider ?? "").ToLowerInvariant() switch
         {
             "discord" => new { content = fullMessage },
             "teams" => new { text = fullMessage },
@@ -40,25 +41,18 @@ public class WebhookNotificationService
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                _logger.LogWarning($"Failed to send webhook to {provider}. Status: {response.StatusCode}. Error: {error}");
+                _logger.LogWarning("Failed to send webhook to {Provider}. Status: {Status}. Error: {Error}", provider, response.StatusCode, error);
+                return false;
             }
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error sending webhook to {provider}");
-        }
-    }
-
-    public async Task<bool> SendTestNotificationAsync(string url, string provider)
-    {
-        try
-        {
-            await SendNotificationAsync(url, provider, "Test Notification", "This is a test notification from HomeLabInfo. If you're seeing this, your webhook is configured correctly!");
-            return true;
-        }
-        catch
-        {
+            _logger.LogError(ex, "Error sending webhook to {Provider}", provider);
             return false;
         }
     }
+
+    public Task<bool> SendTestNotificationAsync(string url, string provider) =>
+        SendNotificationAsync(url, provider, "Test Notification", "This is a test notification from HomeLabInfo. If you're seeing this, your webhook is configured correctly!");
 }
