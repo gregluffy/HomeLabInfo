@@ -53,8 +53,14 @@ public class NetworkScannerService
                 // Without -I, arp-scan uses the first interface that is up, which on hosts with
                 // bridges or several NICs is often not the one on this subnet.
                 string? iface = useInterface ? scanInterface : FindInterfaceForPrefix(prefix);
+                if (iface == null)
+                {
+                    // No local interface on this subnet (e.g. a routed VLAN): ARP can't cross a
+                    // router, so leave it to the ping sweep.
+                    continue;
+                }
                 var args = new List<string>();
-                if (iface != null) args.AddRange(["-I", iface]);
+                args.AddRange(["-I", iface]);
                 args.AddRange([$"{prefix}0/24", "-q"]);
 
                 try
@@ -73,7 +79,7 @@ public class NetworkScannerService
                         if (!arpScannedPrefixes.Contains(prefix))
                         {
                             _logger.LogWarning("arp-scan found no hosts in {Prefix}0/24 on interface {Interface}; falling back to ping sweep.",
-                                prefix, iface ?? "(default)");
+                                prefix, iface);
                         }
                     }
                 }

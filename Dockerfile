@@ -36,10 +36,10 @@ RUN npm run build
 # ---------- Stage 3: Final Runtime Image ----------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 
-# Install Node.js (for Next.js standalone server) + network tools (for backend ARP/ping/arp-scan)
+# Install Node.js (for Next.js standalone server) + network tools (for backend ARP/ping)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-      curl net-tools iputils-ping arp-scan && \
+      curl net-tools iputils-ping && \
     curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && \
     apt-get install -y --no-install-recommends nodejs && \
     rm -rf /var/lib/apt/lists/*
